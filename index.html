@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KPI Call Center - Dashboard</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- PapaParse untuk parsing CSV Google Sheets -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <!-- Chart.js untuk Grafik -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans min-h-screen">
+
+    <!-- KONFIGURASI LINK GOOGLE SHEETS (Ubah URL CSV Anda di Sini) -->
+    <script>
+        const CONFIG = {
+            // Link CSV Google Sheets Data User (Harus Publish to Web -> Format CSV)
+            USERS_SHEET_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT46EP2xu4aZCQsT6V8tNNolBJ1PpNvu2SAIpypQ0ZXRxODokx-5h2KX9Sp-bXgw1HvwbuE3YRqIC1r/pub?gid=0&single=true&output=csv",
+            
+            // Link CSV Google Sheets Data Bulanan
+            MONTHLY_SHEETS: {
+                "2026-08": "PASTE_LINK_CSV_SHEET_AGUSTUS_DI_SINI",
+                "2026-09": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6GPe6lGQy98sH4f9RcCPo9MkbtlIUSiOmqIav_gwEIEB9slBoi1GlocMGQk_3IQ/pub?gid=947655857&single=true&output=csv",
+                "2026-10": "https://docs.google.com/spreadsheets/d/e/2PACX-1vR6xc3DQwV-xvuG_0d9OATKRjVoxP2pVzX5Si95vXBJXyrmo4WFVlc2K84aNfcIWQ/pub?gid=1634651645&single=true&output=csv"
+            }
+        };
+    </script>
+
+    <!-- 1. HALAMAN LOGIN -->
+    <div id="loginPage" class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-200">
+            <div class="text-center mb-6">
+                <div class="w-14 h-14 bg-red-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-bold shadow-lg shadow-red-200">
+                    CC
+                </div>
+                <h2 class="text-2xl font-bold text-slate-800">KPI Portal Call Center</h2>
+                <p class="text-sm text-slate-500 mt-1">Silakan masuk menggunakan akun Anda</p>
+            </div>
+
+            <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Username</label>
+                    <input type="text" id="username" required placeholder="Masukkan username" 
+                        class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-red-500 transition">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Password</label>
+                    <input type="password" id="password" required placeholder="••••••••" 
+                        class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-red-500 transition">
+                </div>
+                
+                <div id="loginError" class="hidden text-red-500 text-xs text-center font-semibold bg-red-50 p-2.5 rounded-lg border border-red-200"></div>
+
+                <button type="submit" id="btnLogin" 
+                    class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-xl shadow-lg shadow-red-200 transition duration-200 flex justify-center items-center">
+                    <span>Masuk ke Dashboard</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 2. HALAMAN DASHBOARD MAIN -->
+    <div id="dashboardPage" class="hidden min-h-screen flex flex-col">
+        <!-- Top Navbar -->
+        <header class="bg-white border-b border-slate-200 px-6 py-4 flex flex-wrap justify-between items-center sticky top-0 z-10 shadow-sm">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-red-600 text-white rounded-xl flex items-center justify-center font-bold text-lg shadow-md shadow-red-100">
+                    CC
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-800 leading-tight">KPI Monitoring Portal</h1>
+                    <p class="text-xs text-slate-500">Call Center Performance & Agent Analytics</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4 mt-3 sm:mt-0">
+                <!-- Dropdown Pilih Bulan -->
+                <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl">
+                    <span class="text-xs font-semibold text-slate-500">Periode:</span>
+                    <select id="selectMonth" onchange="loadMonthlyData()" class="bg-transparent text-xs font-bold text-slate-700 focus:outline-none cursor-pointer">
+                        <option value="2026-10">Oktober 2026</option>
+                        <option value="2026-09">September 2026</option>
+                        <option value="2026-08">Agustus 2026</option>
+                        <option value="ALL">Komparasi All Month</option>
+                    </select>
+                </div>
+
+                <!-- Info User Login -->
+                <div class="text-right pl-3 border-l border-slate-200">
+                    <p id="userDisplayName" class="text-sm font-bold text-slate-800">-</p>
+                    <p id="userRole" class="text-xs text-slate-500">-</p>
+                </div>
+
+                <!-- Tombol Logout -->
+                <button onclick="handleLogout()" class="text-xs bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 font-semibold px-3 py-2 rounded-xl transition border border-slate-200">
+                    Keluar
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Content Area -->
+        <main class="p-6 max-w-7xl mx-auto w-full flex-grow space-y-6">
+            
+            <!-- Cards Summary -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Sales SIR</p>
+                    <h3 id="statSir" class="text-2xl font-bold text-slate-800 mt-1">0%</h3>
+                    <p class="text-xs text-emerald-600 font-semibold mt-1">Target: 100%</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Retention Rate</p>
+                    <h3 id="statRetention" class="text-2xl font-bold text-slate-800 mt-1">0%</h3>
+                    <p class="text-xs text-emerald-600 font-semibold mt-1">Target: 100%</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Repeat Contact (RCR)</p>
+                    <h3 id="statRcr" class="text-2xl font-bold text-slate-800 mt-1">0%</h3>
+                    <p class="text-xs text-slate-400 mt-1">Mobile & Fixed Average</p>
+                </div>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Service Level (SLA)</p>
+                    <h3 id="statSla" class="text-2xl font-bold text-slate-800 mt-1">0%</h3>
+                    <p class="text-xs text-slate-400 mt-1">Pencapaian SLA</p>
+                </div>
+            </div>
+
+            <!-- Chart / Trend Container -->
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <h3 class="text-sm font-bold text-slate-700 mb-4">Grafik Tren / Performance Agent</h3>
+                <div class="h-64 w-full flex items-center justify-center text-slate-400 text-sm border border-dashed border-slate-200 rounded-xl">
+                    <p>Area Grafik (Chart.js siap dikoneksikan ke Sheet Bulanan)</p>
+                </div>
+            </div>
+
+            <!-- Data Table Container -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-5 border-b border-slate-100 flex justify-between items-center">
+                    <h3 class="text-sm font-bold text-slate-700">Detail Pencapaian Agent</h3>
+                    <input type="text" placeholder="Cari nama agent..." class="text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 w-48">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs text-slate-600">
+                        <thead class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-100">
+                            <tr>
+                                <th class="p-4">Nama Agent</th>
+                                <th class="p-4">Interaction</th>
+                                <th class="p-4">Sales Rate</th>
+                                <th class="p-4">RCR Rate</th>
+                                <th class="p-4">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="agentTableBody" class="divide-y divide-slate-100">
+                            <tr>
+                                <td colspan="5" class="p-4 text-center text-slate-400">Pilih periode bulan untuk menampilkan data</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- LOGIKA JAVASCRIPT -->
+    <script>
+        // Cek Sesi Login Saat Halaman Dimuat
+        document.addEventListener("DOMContentLoaded", () => {
+            const currentUser = JSON.parse(localStorage.getItem("active_user"));
+            if (currentUser) {
+                showDashboard(currentUser);
+            }
+        });
+
+        // Function Login menggunakan Data dari Google Sheets
+        function handleLogin(e) {
+            e.preventDefault();
+            const userIn = document.getElementById("username").value.trim();
+            const passIn = document.getElementById("password").value.trim();
+            const errDiv = document.getElementById("loginError");
+            const btn = document.getElementById("btnLogin");
+
+            errDiv.classList.add("hidden");
+            btn.innerHTML = "<span>Memverifikasi...</span>";
+
+            // Mengambil CSV User dari Google Sheets
+            Papa.parse(CONFIG.USERS_SHEET_URL, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    btn.innerHTML = "<span>Masuk ke Dashboard</span>";
+                    const users = results.data;
+                    
+                    // Verifikasi match Username & Password
+                    const matchedUser = users.find(u => 
+                        (u.username && u.username.trim() === userIn) && 
+                        (u.password && u.password.trim() === passIn)
+                    );
+
+                    if (matchedUser) {
+                        const userData = {
+                            username: matchedUser.username,
+                            nama: matchedUser.nama || matchedUser.username,
+                            role: matchedUser.role || "Agent"
+                        };
+                        localStorage.setItem("active_user", JSON.stringify(userData));
+                        showDashboard(userData);
+                    } else {
+                        errDiv.innerText = "Username atau password salah / tidak ditemukan.";
+                        errDiv.classList.remove("hidden");
+                    }
+                },
+                error: function(err) {
+                    btn.innerHTML = "<span>Masuk ke Dashboard</span>";
+                    errDiv.innerText = "Gagal menghubungkan ke Google Sheets User.";
+                    errDiv.classList.remove("hidden");
+                }
+            });
+        }
+
+        function showDashboard(user) {
+            document.getElementById("loginPage").classList.add("hidden");
+            document.getElementById("dashboardPage").classList.remove("hidden");
+            document.getElementById("userDisplayName").innerText = user.nama;
+            document.getElementById("userRole").innerText = user.role;
+            loadMonthlyData();
+        }
+
+        function handleLogout() {
+            localStorage.removeItem("active_user");
+            window.location.reload();
+        }
+
+        // Function Memuat Data Bulanan dari Google Sheets
+        function loadMonthlyData() {
+            const selectedMonth = document.getElementById("selectMonth").value;
+            const sheetUrl = CONFIG.MONTHLY_SHEETS[selectedMonth];
+
+            if (!sheetUrl || sheetUrl.startsWith("PASTE_LINK")) {
+                console.log("URL Sheet belum diatur untuk bulan:", selectedMonth);
+                return;
+            }
+
+            Papa.parse(sheetUrl, {
+                download: true,
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    console.log("Data Bulanan Loaded:", results.data);
+                    // Nanti logika update angka summary & tabel dimasukkan di sini
+                }
+            });
+        }
+    </script>
+</body>
+</html>
