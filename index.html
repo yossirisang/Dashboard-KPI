@@ -13,10 +13,10 @@
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen">
 
-    <!-- KONFIGURASI LINK GOOGLE SHEETS (Ubah URL CSV Anda di Sini) -->
+    <!-- KONFIGURASI LINK GOOGLE SHEETS -->
     <script>
         const CONFIG = {
-            // Link CSV Google Sheets Data User (Harus Publish to Web -> Format CSV)
+            // Link CSV Google Sheets Data User
             USERS_SHEET_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT46EP2xu4aZCQsT6V8tNNolBJ1PpNvu2SAIpypQ0ZXRxODokx-5h2KX9Sp-bXgw1HvwbuE3YRqIC1r/pub?gid=0&single=true&output=csv",
             
             // Link CSV Google Sheets Data Bulanan
@@ -42,7 +42,7 @@
             <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Username</label>
-                    <input type="text" id="username" required placeholder="Masukkan username" 
+                    <input type="text" id="username" required placeholder="Masukkan username (contoh: SIAD)" 
                         class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-red-500 transition">
                 </div>
                 <div>
@@ -174,11 +174,18 @@
             }
         });
 
+        // Function Helper untuk Normalisasi Header Kolom dari Google Sheets
+        function getRowValue(row, columnName) {
+            const keys = Object.keys(row);
+            const matchedKey = keys.find(k => k.trim().toUpperCase() === columnName.trim().toUpperCase());
+            return matchedKey ? row[matchedKey] : "";
+        }
+
         // Function Login menggunakan Data dari Google Sheets
         function handleLogin(e) {
             e.preventDefault();
-            const userIn = document.getElementById("username").value.trim();
-            const passIn = document.getElementById("password").value.trim();
+            const userIn = document.getElementById("username").value.trim().toLowerCase();
+            const passIn = document.getElementById("password").value.trim().toLowerCase();
             const errDiv = document.getElementById("loginError");
             const btn = document.getElementById("btnLogin");
 
@@ -194,28 +201,36 @@
                     btn.innerHTML = "<span>Masuk ke Dashboard</span>";
                     const users = results.data;
                     
-                    // Verifikasi match Username & Password
-                    const matchedUser = users.find(u => 
-                        (u.username && u.username.trim() === userIn) && 
-                        (u.password && u.password.trim() === passIn)
-                    );
+                    // Verifikasi match USERNAME & PASSWORD sesuai kolom di spreadsheet
+                    const matchedUser = users.find(u => {
+                        const sheetUser = getRowValue(u, "USERNAME").toString().trim().toLowerCase();
+                        const sheetPass = getRowValue(u, "PASSWORD").toString().trim().toLowerCase();
+                        return sheetUser === userIn && sheetPass === passIn && sheetUser !== "";
+                    });
 
                     if (matchedUser) {
+                        const namaAgent = getRowValue(matchedUser, "NAMA AGENT") || getRowValue(matchedUser, "USERNAME");
+                        const spv = getRowValue(matchedUser, "SPV");
+                        const tl = getRowValue(matchedUser, "TL");
+
                         const userData = {
-                            username: matchedUser.username,
-                            nama: matchedUser.nama || matchedUser.username,
-                            role: matchedUser.role || "Agent"
+                            username: getRowValue(matchedUser, "USERNAME"),
+                            nama: namaAgent,
+                            spv: spv,
+                            tl: tl,
+                            role: spv ? `SPV: ${spv}` : "Agent"
                         };
+                        
                         localStorage.setItem("active_user", JSON.stringify(userData));
                         showDashboard(userData);
                     } else {
-                        errDiv.innerText = "Username atau password salah / tidak ditemukan.";
+                        errDiv.innerText = "Username atau password tidak cocok / tidak ditemukan.";
                         errDiv.classList.remove("hidden");
                     }
                 },
                 error: function(err) {
                     btn.innerHTML = "<span>Masuk ke Dashboard</span>";
-                    errDiv.innerText = "Gagal menghubungkan ke Google Sheets User.";
+                    errDiv.innerText = "Gagal mengunduh data user dari Google Sheets. Pastikan sheet dipublikasikan.";
                     errDiv.classList.remove("hidden");
                 }
             });
@@ -250,7 +265,6 @@
                 skipEmptyLines: true,
                 complete: function(results) {
                     console.log("Data Bulanan Loaded:", results.data);
-                    // Nanti logika update angka summary & tabel dimasukkan di sini
                 }
             });
         }
