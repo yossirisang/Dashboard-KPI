@@ -35,7 +35,7 @@
         };
 
         let csvCache = {}; 
-        let activeChartType = 'sales'; // Default grafik: 'sales', 'interaksi', atau 'ticket'
+        let activeChartType = 'sales'; 
         let currentChartData = {
             sales: { mobile: [], fixed: [], labels: [] },
             interaksi: { mobile: [], fixed: [], labels: [] },
@@ -153,7 +153,7 @@
                 </div>
             </div>
 
-            <!-- GRAFIK TREN HARIAN (SINGLE AREA DENGAN TAB SWITCHER) -->
+            <!-- GRAFIK TREN HARIAN -->
             <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                 <div class="flex flex-wrap justify-between items-center mb-4 gap-3">
                     <div>
@@ -261,14 +261,39 @@
                     });
 
                     if (matchedUser) {
+                        const userNama = getVal(matchedUser, 3);
+                        const userRole = (getVal(matchedUser, 8) || "AGENT").toUpperCase();
+
+                        // AMBIL DAFTAR SIAD / LOGIN / NAMA ANGGOTA TIM JIKA USER ADALAH TL ATAU SPV
+                        let teamMembers = [];
+                        if (userRole === "TL" || userRole === "TEAM LEADER" || userRole === "SPV" || userRole === "SUPERVISOR") {
+                            userRows.forEach(r => {
+                                const tlName = getVal(r, 4).toLowerCase();  // Kolom E (TL)
+                                const spvName = getVal(r, 5).toLowerCase(); // Kolom F (SPV)
+                                const currentLoginNama = userNama.toLowerCase();
+
+                                const isTeamMember = (userRole.includes("TL") && tlName === currentLoginNama) ||
+                                                     (userRole.includes("SPV") && spvName === currentLoginNama);
+
+                                if (isTeamMember) {
+                                    teamMembers.push({
+                                        siad: getVal(r, 1).toLowerCase(),
+                                        login: getVal(r, 2).toLowerCase(),
+                                        nama: getVal(r, 3).toLowerCase()
+                                    });
+                                }
+                            });
+                        }
+
                         const userData = {
                             siad: getVal(matchedUser, 1),
                             login_id: getVal(matchedUser, 2),
-                            nama: getVal(matchedUser, 3),
+                            nama: userNama,
                             tl: getVal(matchedUser, 4),
                             spv: getVal(matchedUser, 5),
                             username: getVal(matchedUser, 6),
-                            role: (getVal(matchedUser, 8) || "AGENT").toUpperCase()
+                            role: userRole,
+                            teamMembers: teamMembers // Menyimpan daftar anggota tim khusus TL/SPV
                         };
                         
                         localStorage.setItem("active_user", JSON.stringify(userData));
@@ -326,7 +351,6 @@
             });
         }
 
-        // --- MENGAMBIL SELURUH DATA METRIK DARI DATEPICKER ---
         async function loadDashboardData() {
             const startVal = document.getElementById("startDate").value;
             const endVal = document.getElementById("endDate").value;
@@ -367,7 +391,7 @@
             processDashboardMetrics(start, end, metricsDataMap);
         }
 
-        // --- PEMROSESAN DATA DENGAN AGREGASI 3 METRIK ---
+        // --- PEMROSESAN DATA DENGAN FILTER ROLE TIM TERSEPRESISI ---
         function processDashboardMetrics(startDate, endDate, metricsDataMap) {
             const currentUser = JSON.parse(localStorage.getItem("active_user"));
             if (!currentUser) return;
@@ -405,16 +429,32 @@
                     if (!rows) return;
 
                     rows.forEach(r => {
-                        const agentSiad = getVal(r, 1);
-                        const agentLogin = getVal(r, 2);
-                        const agentNama = getVal(r, 3);
+                        const agentSiad = getVal(r, 1).toLowerCase();
+                        const agentLogin = getVal(r, 2).toLowerCase();
+                        const agentNama = getVal(r, 3).toLowerCase();
 
-                        let isMatch = true;
+                        let isMatch = false;
+
+                        // 1. Jika AGENT -> Hanya data miliknya
                         if (role === "AGENT") {
-                            isMatch = agentSiad.toLowerCase() === currentUser.siad.toLowerCase() ||
-                                      agentLogin.toLowerCase() === currentUser.login_id.toLowerCase() ||
-                                      agentNama.toLowerCase() === currentUser.nama.toLowerCase() ||
-                                      agentSiad.toLowerCase() === currentUser.username.toLowerCase();
+                            isMatch = agentSiad === currentUser.siad.toLowerCase() ||
+                                      agentLogin === currentUser.login_id.toLowerCase() ||
+                                      agentNama === currentUser.nama.toLowerCase() ||
+                                      agentSiad === currentUser.username.toLowerCase();
+                        } 
+                        // 2. Jika TL atau SPV -> Pencocokan presisi dengan anggota timnya
+                        else if (role.includes("TL") || role.includes("LEADER") || role.includes("SPV") || role.includes("SUPERVISOR")) {
+                            if (currentUser.teamMembers && currentUser.teamMembers.length > 0) {
+                                isMatch = currentUser.teamMembers.some(m => 
+                                    (agentSiad !== "" && m.siad === agentSiad) ||
+                                    (agentLogin !== "" && m.login === agentLogin) ||
+                                    (agentNama !== "" && m.nama === agentNama)
+                                );
+                            }
+                        } 
+                        // 3. Jika ADMIN / MANAGER -> Tampilkan Semua
+                        else {
+                            isMatch = true;
                         }
 
                         if (isMatch) {
@@ -427,8 +467,8 @@
                             const agentKey = agentSiad || agentNama;
                             if (!agentSummary[agentKey]) {
                                 agentSummary[agentKey] = {
-                                    siad: agentSiad,
-                                    nama: agentNama,
+                                    siad: getVal(r, 1),
+                                    nama: getVal(r, 3),
                                     salesMob: 0, salesFix: 0,
                                     intMob: 0, intFix: 0,
                                     tktMob: 0, tktFix: 0
@@ -454,7 +494,6 @@
             aggregateMetric('interaksi', metricsDataMap.interaksi);
             aggregateMetric('ticket', metricsDataMap.ticket);
 
-            // Hitung Grand Total
             let totals = { salesMob: 0, salesFix: 0, intMob: 0, intFix: 0, tktMob: 0, tktFix: 0 };
             let tbodyHtml = "";
 
@@ -480,7 +519,6 @@
                 `;
             });
 
-            // Update UI Cards Summary
             const totSales = totals.salesMob + totals.salesFix;
             const totInt = totals.intMob + totals.intFix;
             const totTkt = totals.tktMob + totals.tktFix;
@@ -495,13 +533,11 @@
             document.getElementById("statTiketDetail").innerText = `Mobile: ${totals.tktMob.toLocaleString("id-ID")} | Fixed: ${totals.tktFix.toLocaleString("id-ID")}`;
 
             const tbody = document.getElementById("agentTableBody");
-            tbody.innerHTML = Object.keys(agentSummary).length > 0 ? tbodyHtml : `<tr><td colspan="7" class="p-4 text-center text-slate-400">Tidak ada data ditemukan.</td></tr>`;
+            tbody.innerHTML = Object.keys(agentSummary).length > 0 ? tbodyHtml : `<tr><td colspan="7" class="p-4 text-center text-slate-400">Tidak ada data ditemukan untuk tim ini.</td></tr>`;
 
-            // Render Grafik Aktif
             renderChart(activeChartType);
         }
 
-        // --- FUNGSIONALITAS SWITCH TAB GRAFIK ---
         function switchChartTab(type) {
             activeChartType = type;
 
@@ -528,7 +564,6 @@
             renderChart(type);
         }
 
-        // --- RENDER GRAFIK LINE CHART ---
         function renderChart(type) {
             const ctx = document.getElementById("mainChartCanvas").getContext("2d");
             const dataObj = currentChartData[type];
