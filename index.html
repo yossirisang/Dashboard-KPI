@@ -261,25 +261,26 @@
                     });
 
                     if (matchedUser) {
-                        const userNama = getVal(matchedUser, 3);
-                        const userRole = (getVal(matchedUser, 8) || "AGENT").toUpperCase();
+                        const userNama = getVal(matchedUser, 3); // Kolom D (NAMA AGENT)
+                        const userRole = (getVal(matchedUser, 8) || "AGENT").toUpperCase(); // Kolom I (ROLE)
 
-                        // AMBIL DAFTAR SIAD / LOGIN / NAMA ANGGOTA TIM JIKA USER ADALAH TL ATAU SPV
+                        // AMBIL ANGGOTA TIM DENGAN MEMERIKSA KOLOM E (TL) ATAU KOLOM F (SPV)
                         let teamMembers = [];
-                        if (userRole === "TL" || userRole === "TEAM LEADER" || userRole === "SPV" || userRole === "SUPERVISOR") {
+                        if (userRole.includes("TL") || userRole.includes("LEADER") || userRole.includes("SPV") || userRole.includes("SUPERVISOR")) {
+                            const targetLeaderName = userNama.toLowerCase();
+
                             userRows.forEach(r => {
-                                const tlName = getVal(r, 4).toLowerCase();  // Kolom E (TL)
-                                const spvName = getVal(r, 5).toLowerCase(); // Kolom F (SPV)
-                                const currentLoginNama = userNama.toLowerCase();
+                                const agentTl = getVal(r, 4).toLowerCase();  // Kolom E (TL)
+                                const agentSpv = getVal(r, 5).toLowerCase(); // Kolom F (SPV)
 
-                                const isTeamMember = (userRole.includes("TL") && tlName === currentLoginNama) ||
-                                                     (userRole.includes("SPV") && spvName === currentLoginNama);
+                                const isMatchTL = userRole.includes("TL") || userRole.includes("LEADER");
+                                const isMatchSPV = userRole.includes("SPV") || userRole.includes("SUPERVISOR");
 
-                                if (isTeamMember) {
+                                if ((isMatchTL && agentTl === targetLeaderName) || (isMatchSPV && agentSpv === targetLeaderName)) {
                                     teamMembers.push({
-                                        siad: getVal(r, 1).toLowerCase(),
-                                        login: getVal(r, 2).toLowerCase(),
-                                        nama: getVal(r, 3).toLowerCase()
+                                        siad: getVal(r, 1).toLowerCase(),  // Kolom B
+                                        login: getVal(r, 2).toLowerCase(), // Kolom C
+                                        nama: getVal(r, 3).toLowerCase()   // Kolom D
                                     });
                                 }
                             });
@@ -293,7 +294,7 @@
                             spv: getVal(matchedUser, 5),
                             username: getVal(matchedUser, 6),
                             role: userRole,
-                            teamMembers: teamMembers // Menyimpan daftar anggota tim khusus TL/SPV
+                            teamMembers: teamMembers // Daftar pengenal anggota tim
                         };
                         
                         localStorage.setItem("active_user", JSON.stringify(userData));
@@ -391,7 +392,6 @@
             processDashboardMetrics(start, end, metricsDataMap);
         }
 
-        // --- PEMROSESAN DATA DENGAN FILTER ROLE TIM TERSEPRESISI ---
         function processDashboardMetrics(startDate, endDate, metricsDataMap) {
             const currentUser = JSON.parse(localStorage.getItem("active_user"));
             if (!currentUser) return;
@@ -429,20 +429,19 @@
                     if (!rows) return;
 
                     rows.forEach(r => {
-                        const agentSiad = getVal(r, 1).toLowerCase();
-                        const agentLogin = getVal(r, 2).toLowerCase();
-                        const agentNama = getVal(r, 3).toLowerCase();
+                        const agentSiad = getVal(r, 1).toLowerCase();  // Kolom B
+                        const agentLogin = getVal(r, 2).toLowerCase(); // Kolom C
+                        const agentNama = getVal(r, 3).toLowerCase();  // Kolom D
 
                         let isMatch = false;
 
                         // 1. Jika AGENT -> Hanya data miliknya
                         if (role === "AGENT") {
-                            isMatch = agentSiad === currentUser.siad.toLowerCase() ||
-                                      agentLogin === currentUser.login_id.toLowerCase() ||
-                                      agentNama === currentUser.nama.toLowerCase() ||
-                                      agentSiad === currentUser.username.toLowerCase();
+                            isMatch = (agentSiad !== "" && agentSiad === currentUser.siad.toLowerCase()) ||
+                                      (agentLogin !== "" && agentLogin === currentUser.login_id.toLowerCase()) ||
+                                      (agentNama !== "" && agentNama === currentUser.nama.toLowerCase());
                         } 
-                        // 2. Jika TL atau SPV -> Pencocokan presisi dengan anggota timnya
+                        // 2. Jika TL atau SPV -> Pencocokan dengan daftar anggota tim dari sheet user
                         else if (role.includes("TL") || role.includes("LEADER") || role.includes("SPV") || role.includes("SUPERVISOR")) {
                             if (currentUser.teamMembers && currentUser.teamMembers.length > 0) {
                                 isMatch = currentUser.teamMembers.some(m => 
