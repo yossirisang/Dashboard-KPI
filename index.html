@@ -227,7 +227,7 @@
 
             if (!startDateElem.value || !endDateElem.value) {
                 startDateElem.value = "2026-09-01";
-                endDateElem.value = "2026-10-31";
+                endDateElem.value = "2026-09-30";
             }
         }
 
@@ -358,8 +358,12 @@
 
             if (!startVal || !endVal) return;
 
-            const start = new Date(startVal);
-            const end = new Date(endVal);
+            // Memastikan format tanggal standar lokal (mencegah offset timezone UTC)
+            const [sYear, sMonth, sDay] = startVal.split("-").map(Number);
+            const [eYear, eMonth, eDay] = endVal.split("-").map(Number);
+
+            const start = new Date(sYear, sMonth - 1, sDay);
+            const end = new Date(eYear, eMonth - 1, eDay);
 
             if (start > end) {
                 tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-500">Tanggal awal tidak boleh melebihi tanggal akhir.</td></tr>`;
@@ -399,7 +403,7 @@
 
             let dateLabels = [];
             let dateMap = [];
-            let tempDate = new Date(startDate);
+            let tempDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
             const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"];
 
             while (tempDate <= endDate) {
