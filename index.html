@@ -184,7 +184,7 @@
                 return row[matchedKey];
             }
             
-            // 2. Fallback berdasarkan indeks kolom (0-indexed, contoh Kolom I = indeks 8)
+            // 2. Fallback berdasarkan indeks kolom (0-indexed, Kolom I = indeks 8)
             if (colIndex !== undefined && keys[colIndex] !== undefined) {
                 return row[keys[colIndex]];
             }
@@ -222,13 +222,13 @@
                     if (matchedUser) {
                         const namaAgent = getRowValue(matchedUser, "NAMA AGENT", 3) || getRowValue(matchedUser, "USERNAME", 6);
                         
-                        // Kolom I (Indeks 8 di spreadsheet)
-                        const userRoleVal = getRowValue(matchedUser, "ROLE", 8) || "AGENT";
+                        // Kolom I (Indeks 8 di spreadsheet, header: ROLE)
+                        const roleVal = getRowValue(matchedUser, "ROLE", 8) || "AGENT";
 
                         const userData = {
                             username: getRowValue(matchedUser, "USERNAME", 6),
                             nama: namaAgent,
-                            role: userRoleVal
+                            role: roleVal
                         };
                         
                         localStorage.setItem("active_user", JSON.stringify(userData));
