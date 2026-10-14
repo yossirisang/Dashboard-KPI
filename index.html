@@ -226,7 +226,7 @@
             const endDateElem = document.getElementById("endDate");
 
             if (!startDateElem.value || !endDateElem.value) {
-                startDateElem.value = "2026-09-01";
+                startDateElem.value = "2026-10-01";
                 endDateElem.value = "2026-10-31";
             }
         }
@@ -453,8 +453,10 @@
                         }
 
                         if (isMatch) {
+                            // MOBILE Tanggal 1 = Kolom G (Index 6)
                             const mobVal = parseInt(getVal(r, 6 + (dObj.day - 1))) || 0;
-                            const fixVal = parseInt(getVal(r, 38 + (dObj.day - 1))) || 0;
+                            // FIXED Tanggal 1 = Kolom AN (Index 39)
+                            const fixVal = parseInt(getVal(r, 39 + (dObj.day - 1))) || 0;
 
                             currentChartData[metricType].mobile[idx] += mobVal;
                             currentChartData[metricType].fixed[idx] += fixVal;
