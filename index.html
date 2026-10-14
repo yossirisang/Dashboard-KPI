@@ -272,10 +272,10 @@
                                 const agentTl = getVal(r, 4).toLowerCase();  
                                 const agentSpv = getVal(r, 5).toLowerCase(); 
 
-                                const isMatchTL = userRole.includes("TL") || userRole.includes("LEADER");
-                                const isMatchSPV = userRole.includes("SPV") || userRole.includes("SUPERVISOR");
+                                const isMatchTL = (userRole.includes("TL") || userRole.includes("LEADER")) && agentTl === targetLeaderName;
+                                const isMatchSPV = (userRole.includes("SPV") || userRole.includes("SUPERVISOR")) && agentSpv === targetLeaderName;
 
-                                if ((isMatchTL && agentTl === targetLeaderName) || (isMatchSPV && agentSpv === targetLeaderName)) {
+                                if (isMatchTL || isMatchSPV) {
                                     teamMembers.push({
                                         siad: getVal(r, 1).toLowerCase(),  
                                         login: getVal(r, 2).toLowerCase(), 
@@ -358,7 +358,6 @@
 
             if (!startVal || !endVal) return;
 
-            // Memastikan format tanggal standar lokal (mencegah offset timezone UTC)
             const [sYear, sMonth, sDay] = startVal.split("-").map(Number);
             const [eYear, eMonth, eDay] = endVal.split("-").map(Number);
 
@@ -412,7 +411,6 @@
                 const day = tempDate.getDate();
                 const mKey = `${yyyy}-${mm}`;
 
-                // Menentukan jumlah hari dalam bulan tersebut (30 / 31 hari)
                 const daysInMonth = new Date(yyyy, parseInt(mm), 0).getDate();
 
                 dateLabels.push(`${day} ${monthNames[tempDate.getMonth()]}`);
@@ -434,15 +432,17 @@
                     const rows = dataMapObj[dObj.mKey];
                     if (!rows) return;
 
-                    // DOKUMEN DINAMIS INDEKS FIXED:
-                    // Bulan 30 hari (Sep) -> Indeks Fixed Tgl 1 = 38 (Kolom AM)
-                    // Bulan 31 hari (Okt) -> Indeks Fixed Tgl 1 = 39 (Kolom AN)
+                    // PEMETAAN TETAP SESUAI INSTRUKSI SPESIFIK:
+                    // Mobile Tanggal 1 = Kolom G (Index 6)
+                    const mobBaseIndex = 6; 
+                    // Fixed Tanggal 1 = Kolom AM (Index 38 untuk Sep) / Kolom AN (Index 39 untuk Okt)
                     const fixedBaseIndex = (dObj.daysInMonth === 30) ? 38 : 39;
 
                     rows.forEach(r => {
                         const agentSiad = getVal(r, 1).toLowerCase();  
                         const agentLogin = getVal(r, 2).toLowerCase(); 
                         const agentNama = getVal(r, 3).toLowerCase();  
+                        const agentTl = getVal(r, 4).toLowerCase(); 
 
                         let isMatch = false;
 
@@ -459,16 +459,16 @@
                                     (agentNama !== "" && m.nama === agentNama)
                                 );
                             }
+                            if (!isMatch && agentTl === currentUser.nama.toLowerCase()) {
+                                isMatch = true;
+                            }
                         } 
                         else {
                             isMatch = true;
                         }
 
                         if (isMatch) {
-                            // MOBILE: Tanggal 1 selalu Kolom G (Index 6)
-                            const mobVal = parseInt(getVal(r, 6 + (dObj.day - 1))) || 0;
-                            
-                            // FIXED: Dinamis sesuai jumlah hari bulan tersebut
+                            const mobVal = parseInt(getVal(r, mobBaseIndex + (dObj.day - 1))) || 0;
                             const fixVal = parseInt(getVal(r, fixedBaseIndex + (dObj.day - 1))) || 0;
 
                             currentChartData[metricType].mobile[idx] += mobVal;
