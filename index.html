@@ -19,16 +19,29 @@
             // Link CSV Google Sheets Data User
             USERS_SHEET_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT46EP2xu4aZCQsT6V8tNNolBJ1PpNvu2SAIpypQ0ZXRxODokx-5h2KX9Sp-bXgw1HvwbuE3YRqIC1r/pub?gid=0&single=true&output=csv",
             
-            // Link CSV Google Sheets Data Sales Per Bulan (Format YYYY-MM)
-            MONTHLY_SHEETS: {
-                "2026-08": "PASTE_LINK_CSV_SHEET_AGUSTUS_DI_SINI",
-                "2026-09": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6GPe6lGQy98sH4f9RcCPo9MkbtlIUSiOmqIav_gwEIEB9slBoi1GlocMGQk_3IQ/pub?gid=407201662&single=true&output=csv",
-                "2026-10": "https://docs.google.com/spreadsheets/d/e/2PACX-1vR6xc3DQwV-xvuG_0d9OATKRjVoxP2pVzX5Si95vXBJXyrmo4WFVlc2K84aNfcIWQ/pub?gid=1693059487&single=true&output=csv"
+            // Link CSV Google Sheets Per Bulan & Per Kategori
+            MONTHLY_METRICS: {
+                "2026-10": {
+                    sales: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR6xc3DQwV-xvuG_0d9OATKRjVoxP2pVzX5Si95vXBJXyrmo4WFVlc2K84aNfcIWQ/pub?gid=1693059487&single=true&output=csv",
+                    interaksi: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR6xc3DQwV-xvuG_0d9OATKRjVoxP2pVzX5Si95vXBJXyrmo4WFVlc2K84aNfcIWQ/pub?gid=2115127099&single=true&output=csv",
+                    ticket: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR6xc3DQwV-xvuG_0d9OATKRjVoxP2pVzX5Si95vXBJXyrmo4WFVlc2K84aNfcIWQ/pub?gid=1604890666&single=true&output=csv"
+                },
+                "2026-09": {
+                    sales: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6GPe6lGQy98sH4f9RcCPo9MkbtlIUSiOmqIav_gwEIEB9slBoi1GlocMGQk_3IQ/pub?gid=407201662&single=true&output=csv",
+                    interaksi: "",
+                    ticket: ""
+                }
             }
         };
 
-        let loadedSalesCache = {}; // Cache data CSV bulanan yang sudah diunduh
-        let salesChart = null; // Instance Chart.js
+        let csvCache = {}; 
+        let activeChartType = 'sales'; // Default grafik: 'sales', 'interaksi', atau 'ticket'
+        let currentChartData = {
+            sales: { mobile: [], fixed: [], labels: [] },
+            interaksi: { mobile: [], fixed: [], labels: [] },
+            ticket: { mobile: [], fixed: [], labels: [] }
+        };
+        let mainChart = null; 
     </script>
 
     <!-- 1. HALAMAN LOGIN -->
@@ -82,9 +95,9 @@
                 <!-- Datepicker Rentang Tanggal -->
                 <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs">
                     <span class="font-semibold text-slate-500">Periode:</span>
-                    <input type="date" id="startDate" onchange="loadCustomRangeData()" class="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer">
+                    <input type="date" id="startDate" onchange="loadDashboardData()" class="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer">
                     <span class="text-slate-400 font-bold">s/d</span>
-                    <input type="date" id="endDate" onchange="loadCustomRangeData()" class="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer">
+                    <input type="date" id="endDate" onchange="loadDashboardData()" class="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer">
                 </div>
 
                 <!-- Info User Login -->
@@ -105,18 +118,22 @@
             
             <!-- Cards Summary -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                
+                <!-- CARD INTERAKSI -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
                     <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Interaksi</p>
                     <h3 id="statTotalInteraksi" class="text-2xl font-bold text-slate-800 mt-1">0</h3>
-                    <p class="text-xs text-slate-400 mt-1">Interaksi Agent</p>
+                    <p id="statInteraksiDetail" class="text-xs text-slate-400 mt-2">Mobile: 0 | Fixed: 0</p>
                 </div>
-                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+
+                <!-- CARD TIKET -->
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
                     <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Tiket</p>
                     <h3 id="statTotalTiket" class="text-2xl font-bold text-slate-800 mt-1">0</h3>
-                    <p class="text-xs text-slate-400 mt-1">Tiket Penanganan</p>
+                    <p id="statTiketDetail" class="text-xs text-slate-400 mt-2">Mobile: 0 | Fixed: 0</p>
                 </div>
                 
-                <!-- SCORECARD SALES -->
+                <!-- CARD SALES -->
                 <div class="bg-white p-5 rounded-2xl border-2 border-red-500/30 shadow-sm relative overflow-hidden">
                     <div class="flex justify-between items-start">
                         <div>
@@ -128,6 +145,7 @@
                     <p id="statSalesDetail" class="text-xs text-slate-400 mt-2">Mobile: 0 | Fixed: 0</p>
                 </div>
 
+                <!-- CARD FCR -->
                 <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                     <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">FCR</p>
                     <h3 id="statFcr" class="text-2xl font-bold text-slate-800 mt-1">0%</h3>
@@ -135,20 +153,30 @@
                 </div>
             </div>
 
-            <!-- GRAFIK TREN SALES (LINE CHART HARIAN) -->
+            <!-- GRAFIK TREN HARIAN (SINGLE AREA DENGAN TAB SWITCHER) -->
             <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
+                <div class="flex flex-wrap justify-between items-center mb-4 gap-3">
                     <div>
-                        <h3 class="text-sm font-bold text-slate-800">Grafik Tren Penjualan Harian (Daily Sales)</h3>
-                        <p id="chartSubTitle" class="text-xs text-slate-400">Komparasi Penjualan Produk Mobile (Biru) & Fixed (Merah)</p>
+                        <h3 id="chartTitle" class="text-sm font-bold text-slate-800">Grafik Tren Penjualan Harian (Daily Sales)</h3>
+                        <p class="text-xs text-slate-400">Komparasi Per-Daily Produk Mobile (Biru) & Fixed (Merah)</p>
                     </div>
-                    <div class="flex gap-4 text-xs font-semibold">
-                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-blue-500 inline-block"></span> Mobile</span>
-                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-red-500 inline-block"></span> Fixed</span>
+
+                    <!-- TAB SWITCHER GRAFIK -->
+                    <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
+                        <button id="btnTabSales" onclick="switchChartTab('sales')" class="px-3 py-1.5 text-xs font-bold rounded-lg transition bg-white text-red-600 shadow-sm">
+                            Sales
+                        </button>
+                        <button id="btnTabInteraksi" onclick="switchChartTab('interaksi')" class="px-3 py-1.5 text-xs font-bold rounded-lg transition text-slate-500 hover:text-slate-800">
+                            Interaksi
+                        </button>
+                        <button id="btnTabTicket" onclick="switchChartTab('ticket')" class="px-3 py-1.5 text-xs font-bold rounded-lg transition text-slate-500 hover:text-slate-800">
+                            Tiket
+                        </button>
                     </div>
                 </div>
+
                 <div class="relative h-72 w-full">
-                    <canvas id="salesChartCanvas"></canvas>
+                    <canvas id="mainChartCanvas"></canvas>
                 </div>
             </div>
 
@@ -164,6 +192,8 @@
                             <tr>
                                 <th class="p-4">Nama Agent</th>
                                 <th class="p-4">SIAD</th>
+                                <th class="p-4">Total Interaksi</th>
+                                <th class="p-4">Total Tiket</th>
                                 <th class="p-4">Sales Mobile</th>
                                 <th class="p-4">Sales Fixed</th>
                                 <th class="p-4">Total Sales</th>
@@ -171,7 +201,7 @@
                         </thead>
                         <tbody id="agentTableBody" class="divide-y divide-slate-100">
                             <tr>
-                                <td colspan="5" class="p-4 text-center text-slate-400">Memuat data...</td>
+                                <td colspan="7" class="p-4 text-center text-slate-400">Memuat data...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -191,7 +221,6 @@
             }
         });
 
-        // Set default rentang tanggal (Awal Bulan Oktober sd Hari Ini)
         function initDefaultDates() {
             const startDateElem = document.getElementById("startDate");
             const endDateElem = document.getElementById("endDate");
@@ -263,7 +292,7 @@
             document.getElementById("dashboardPage").classList.remove("hidden");
             document.getElementById("userDisplayName").innerText = user.nama;
             document.getElementById("userRole").innerText = user.role;
-            loadCustomRangeData();
+            loadDashboardData();
         }
 
         function handleLogout() {
@@ -271,11 +300,14 @@
             window.location.reload();
         }
 
-        // --- HELPER UNTUK FETCH CSV DENGAN CACHING ---
         function fetchCsvData(url) {
-            return new Promise((resolve, reject) => {
-                if (loadedSalesCache[url]) {
-                    resolve(loadedSalesCache[url]);
+            return new Promise((resolve) => {
+                if (!url || url.startsWith("PASTE_LINK") || url === "") {
+                    resolve([]);
+                    return;
+                }
+                if (csvCache[url]) {
+                    resolve(csvCache[url]);
                     return;
                 }
                 Papa.parse(url, {
@@ -283,19 +315,19 @@
                     header: false,
                     skipEmptyLines: true,
                     complete: function(results) {
-                        const rows = results.data.slice(2); // Mengabaikan 2 baris header
-                        loadedSalesCache[url] = rows;
+                        const rows = results.data.slice(2);
+                        csvCache[url] = rows;
                         resolve(rows);
                     },
-                    error: function(err) {
-                        reject(err);
+                    error: function() {
+                        resolve([]);
                     }
                 });
             });
         }
 
-        // --- MENGAMBIL DATA BERDASARKAN RENTANG TANGGAL CUSTOM ---
-        async function loadCustomRangeData() {
+        // --- MENGAMBIL SELURUH DATA METRIK DARI DATEPICKER ---
+        async function loadDashboardData() {
             const startVal = document.getElementById("startDate").value;
             const endVal = document.getElementById("endDate").value;
             const tbody = document.getElementById("agentTableBody");
@@ -306,51 +338,45 @@
             const end = new Date(endVal);
 
             if (start > end) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-red-500">Tanggal awal tidak boleh melebihi tanggal akhir.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-red-500">Tanggal awal tidak boleh melebihi tanggal akhir.</td></tr>`;
                 return;
             }
 
-            tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">Memuat data rentang tanggal...</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">Memuat data rentang tanggal...</td></tr>`;
 
-            // Identifikasi daftar bulan YYYY-MM yang tercakup dalam rentang tanggal
             let monthsToFetch = [];
             let curr = new Date(start.getFullYear(), start.getMonth(), 1);
             while (curr <= end) {
                 const yyyy = curr.getFullYear();
                 const mm = String(curr.getMonth() + 1).padStart(2, '0');
-                const key = `${yyyy}-${mm}`;
-                monthsToFetch.push(key);
+                monthsToFetch.push(`${yyyy}-${mm}`);
                 curr.setMonth(curr.getMonth() + 1);
             }
 
-            // Ambil semua CSV bulan yang dibutuhkan
-            let monthlyDataMap = {};
+            let metricsDataMap = { sales: {}, interaksi: {}, ticket: {} };
+
             for (let mKey of monthsToFetch) {
-                const url = CONFIG.MONTHLY_SHEETS[mKey];
-                if (url && !url.startsWith("PASTE_LINK")) {
-                    try {
-                        monthlyDataMap[mKey] = await fetchCsvData(url);
-                    } catch (e) {
-                        console.error("Gagal memuat CSV bulan:", mKey);
-                    }
+                const metricUrls = CONFIG.MONTHLY_METRICS[mKey];
+                if (metricUrls) {
+                    metricsDataMap.sales[mKey] = await fetchCsvData(metricUrls.sales);
+                    metricsDataMap.interaksi[mKey] = await fetchCsvData(metricUrls.interaksi);
+                    metricsDataMap.ticket[mKey] = await fetchCsvData(metricUrls.ticket);
                 }
             }
 
-            processAndDisplayRangeSales(start, end, monthlyDataMap);
+            processDashboardMetrics(start, end, metricsDataMap);
         }
 
-        // --- PROSES DAN TAMPILKAN DATA UNTUK RENTANG TANGGAL ---
-        function processAndDisplayRangeSales(startDate, endDate, monthlyDataMap) {
+        // --- PEMROSESAN DATA DENGAN AGREGASI 3 METRIK ---
+        function processDashboardMetrics(startDate, endDate, metricsDataMap) {
             const currentUser = JSON.parse(localStorage.getItem("active_user"));
             if (!currentUser) return;
 
             const role = currentUser.role.toUpperCase();
 
-            // Generate Array Tanggal Harian untuk Sumbu X Grafik
             let dateLabels = [];
-            let dateMap = []; // { key: '2026-09', day: 10, label: '10 Sep' }
+            let dateMap = [];
             let tempDate = new Date(startDate);
-
             const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"];
 
             while (tempDate <= endDate) {
@@ -365,106 +391,160 @@
                 tempDate.setDate(tempDate.getDate() + 1);
             }
 
-            let dailyMobile = new Array(dateMap.length).fill(0);
-            let dailyFixed = new Array(dateMap.length).fill(0);
+            currentChartData = {
+                sales: { mobile: new Array(dateMap.length).fill(0), fixed: new Array(dateMap.length).fill(0), labels: dateLabels },
+                interaksi: { mobile: new Array(dateMap.length).fill(0), fixed: new Array(dateMap.length).fill(0), labels: dateLabels },
+                ticket: { mobile: new Array(dateMap.length).fill(0), fixed: new Array(dateMap.length).fill(0), labels: dateLabels }
+            };
 
-            // Objek untuk mengagregasi data per-Agent
             let agentSummary = {};
 
-            // Iterasi per tanggal di rentang
-            dateMap.forEach((dObj, idx) => {
-                const rows = monthlyDataMap[dObj.mKey];
-                if (!rows) return;
+            function aggregateMetric(metricType, dataMapObj) {
+                dateMap.forEach((dObj, idx) => {
+                    const rows = dataMapObj[dObj.mKey];
+                    if (!rows) return;
 
-                rows.forEach(r => {
-                    const agentSiad = getVal(r, 1);
-                    const agentLogin = getVal(r, 2);
-                    const agentNama = getVal(r, 3);
+                    rows.forEach(r => {
+                        const agentSiad = getVal(r, 1);
+                        const agentLogin = getVal(r, 2);
+                        const agentNama = getVal(r, 3);
 
-                    // Filter Role
-                    let isMatch = true;
-                    if (role === "AGENT") {
-                        isMatch = agentSiad.toLowerCase() === currentUser.siad.toLowerCase() ||
-                                  agentLogin.toLowerCase() === currentUser.login_id.toLowerCase() ||
-                                  agentNama.toLowerCase() === currentUser.nama.toLowerCase() ||
-                                  agentSiad.toLowerCase() === currentUser.username.toLowerCase();
-                    }
-
-                    if (isMatch) {
-                        // Kolom Mobile Daily: Kolom G (index 6) + day - 1
-                        const mobVal = parseInt(getVal(r, 6 + (dObj.day - 1))) || 0;
-                        // Kolom Fixed Daily: Kolom AM (index 38) + day - 1
-                        const fixVal = parseInt(getVal(r, 38 + (dObj.day - 1))) || 0;
-
-                        dailyMobile[idx] += mobVal;
-                        dailyFixed[idx] += fixVal;
-
-                        const agentKey = agentSiad || agentNama;
-                        if (!agentSummary[agentKey]) {
-                            agentSummary[agentKey] = {
-                                siad: agentSiad,
-                                nama: agentNama,
-                                mobile: 0,
-                                fixed: 0
-                            };
+                        let isMatch = true;
+                        if (role === "AGENT") {
+                            isMatch = agentSiad.toLowerCase() === currentUser.siad.toLowerCase() ||
+                                      agentLogin.toLowerCase() === currentUser.login_id.toLowerCase() ||
+                                      agentNama.toLowerCase() === currentUser.nama.toLowerCase() ||
+                                      agentSiad.toLowerCase() === currentUser.username.toLowerCase();
                         }
-                        agentSummary[agentKey].mobile += mobVal;
-                        agentSummary[agentKey].fixed += fixVal;
-                    }
-                });
-            });
 
-            // Hitung Total Sales
-            let grandMobile = 0;
-            let grandFixed = 0;
+                        if (isMatch) {
+                            const mobVal = parseInt(getVal(r, 6 + (dObj.day - 1))) || 0;
+                            const fixVal = parseInt(getVal(r, 38 + (dObj.day - 1))) || 0;
+
+                            currentChartData[metricType].mobile[idx] += mobVal;
+                            currentChartData[metricType].fixed[idx] += fixVal;
+
+                            const agentKey = agentSiad || agentNama;
+                            if (!agentSummary[agentKey]) {
+                                agentSummary[agentKey] = {
+                                    siad: agentSiad,
+                                    nama: agentNama,
+                                    salesMob: 0, salesFix: 0,
+                                    intMob: 0, intFix: 0,
+                                    tktMob: 0, tktFix: 0
+                                };
+                            }
+
+                            if (metricType === 'sales') {
+                                agentSummary[agentKey].salesMob += mobVal;
+                                agentSummary[agentKey].salesFix += fixVal;
+                            } else if (metricType === 'interaksi') {
+                                agentSummary[agentKey].intMob += mobVal;
+                                agentSummary[agentKey].intFix += fixVal;
+                            } else if (metricType === 'ticket') {
+                                agentSummary[agentKey].tktMob += mobVal;
+                                agentSummary[agentKey].tktFix += fixVal;
+                            }
+                        }
+                    });
+                });
+            }
+
+            aggregateMetric('sales', metricsDataMap.sales);
+            aggregateMetric('interaksi', metricsDataMap.interaksi);
+            aggregateMetric('ticket', metricsDataMap.ticket);
+
+            // Hitung Grand Total
+            let totals = { salesMob: 0, salesFix: 0, intMob: 0, intFix: 0, tktMob: 0, tktFix: 0 };
             let tbodyHtml = "";
 
-            Object.values(agentSummary).forEach(agent => {
-                const total = agent.mobile + agent.fixed;
-                grandMobile += agent.mobile;
-                grandFixed += agent.fixed;
+            Object.values(agentSummary).forEach(ag => {
+                totals.salesMob += ag.salesMob; totals.salesFix += ag.salesFix;
+                totals.intMob += ag.intMob; totals.intFix += ag.intFix;
+                totals.tktMob += ag.tktMob; totals.tktFix += ag.tktFix;
+
+                const totalInt = ag.intMob + ag.intFix;
+                const totalTkt = ag.tktMob + ag.tktFix;
+                const totalSales = ag.salesMob + ag.salesFix;
 
                 tbodyHtml += `
                     <tr class="hover:bg-slate-50 transition">
-                        <td class="p-4 font-semibold text-slate-800">${agent.nama}</td>
-                        <td class="p-4 text-slate-500">${agent.siad}</td>
-                        <td class="p-4 font-semibold text-blue-600">${agent.mobile.toLocaleString("id-ID")}</td>
-                        <td class="p-4 font-semibold text-red-600">${agent.fixed.toLocaleString("id-ID")}</td>
-                        <td class="p-4 font-bold text-slate-800">${total.toLocaleString("id-ID")}</td>
+                        <td class="p-4 font-semibold text-slate-800">${ag.nama}</td>
+                        <td class="p-4 text-slate-500">${ag.siad}</td>
+                        <td class="p-4 font-semibold text-slate-700">${totalInt.toLocaleString("id-ID")}</td>
+                        <td class="p-4 font-semibold text-slate-700">${totalTkt.toLocaleString("id-ID")}</td>
+                        <td class="p-4 font-semibold text-blue-600">${ag.salesMob.toLocaleString("id-ID")}</td>
+                        <td class="p-4 font-semibold text-red-600">${ag.salesFix.toLocaleString("id-ID")}</td>
+                        <td class="p-4 font-bold text-slate-800">${totalSales.toLocaleString("id-ID")}</td>
                     </tr>
                 `;
             });
 
-            const grandTotal = grandMobile + grandFixed;
+            // Update UI Cards Summary
+            const totSales = totals.salesMob + totals.salesFix;
+            const totInt = totals.intMob + totals.intFix;
+            const totTkt = totals.tktMob + totals.tktFix;
 
-            // Update Cards Summary
-            document.getElementById("statSales").innerText = grandTotal.toLocaleString("id-ID");
-            document.getElementById("statSalesDetail").innerText = `Mobile: ${grandMobile.toLocaleString("id-ID")} | Fixed: ${grandFixed.toLocaleString("id-ID")}`;
+            document.getElementById("statSales").innerText = totSales.toLocaleString("id-ID");
+            document.getElementById("statSalesDetail").innerText = `Mobile: ${totals.salesMob.toLocaleString("id-ID")} | Fixed: ${totals.salesFix.toLocaleString("id-ID")}`;
 
-            // Update Tabel Agent
+            document.getElementById("statTotalInteraksi").innerText = totInt.toLocaleString("id-ID");
+            document.getElementById("statInteraksiDetail").innerText = `Mobile: ${totals.intMob.toLocaleString("id-ID")} | Fixed: ${totals.intFix.toLocaleString("id-ID")}`;
+
+            document.getElementById("statTotalTiket").innerText = totTkt.toLocaleString("id-ID");
+            document.getElementById("statTiketDetail").innerText = `Mobile: ${totals.tktMob.toLocaleString("id-ID")} | Fixed: ${totals.tktFix.toLocaleString("id-ID")}`;
+
             const tbody = document.getElementById("agentTableBody");
-            tbody.innerHTML = Object.keys(agentSummary).length > 0 ? tbodyHtml : `<tr><td colspan="5" class="p-4 text-center text-slate-400">Tidak ada data sales ditemukan pada rentang tanggal ini.</td></tr>`;
+            tbody.innerHTML = Object.keys(agentSummary).length > 0 ? tbodyHtml : `<tr><td colspan="7" class="p-4 text-center text-slate-400">Tidak ada data ditemukan.</td></tr>`;
 
-            // Render Grafik
-            renderSalesChart(dateLabels, dailyMobile, dailyFixed);
+            // Render Grafik Aktif
+            renderChart(activeChartType);
         }
 
-        // --- RENDER GRAFIK LINE CHART DENGAN LABELS TANGGAL HARIAN ---
-        function renderSalesChart(labels, mobileData, fixedData) {
-            const ctx = document.getElementById("salesChartCanvas").getContext("2d");
+        // --- FUNGSIONALITAS SWITCH TAB GRAFIK ---
+        function switchChartTab(type) {
+            activeChartType = type;
 
-            if (salesChart) {
-                salesChart.destroy();
+            const btnSales = document.getElementById("btnTabSales");
+            const btnInteraksi = document.getElementById("btnTabInteraksi");
+            const btnTicket = document.getElementById("btnTabTicket");
+            const titleElem = document.getElementById("chartTitle");
+
+            [btnSales, btnInteraksi, btnTicket].forEach(b => {
+                b.className = "px-3 py-1.5 text-xs font-bold rounded-lg transition text-slate-500 hover:text-slate-800";
+            });
+
+            if (type === 'sales') {
+                btnSales.className = "px-3 py-1.5 text-xs font-bold rounded-lg transition bg-white text-red-600 shadow-sm";
+                titleElem.innerText = "Grafik Tren Penjualan Harian (Daily Sales)";
+            } else if (type === 'interaksi') {
+                btnInteraksi.className = "px-3 py-1.5 text-xs font-bold rounded-lg transition bg-white text-red-600 shadow-sm";
+                titleElem.innerText = "Grafik Tren Interaksi Harian (Daily Interaction)";
+            } else if (type === 'ticket') {
+                btnTicket.className = "px-3 py-1.5 text-xs font-bold rounded-lg transition bg-white text-red-600 shadow-sm";
+                titleElem.innerText = "Grafik Tren Penanganan Tiket Harian (Daily Ticket)";
             }
 
-            salesChart = new Chart(ctx, {
+            renderChart(type);
+        }
+
+        // --- RENDER GRAFIK LINE CHART ---
+        function renderChart(type) {
+            const ctx = document.getElementById("mainChartCanvas").getContext("2d");
+            const dataObj = currentChartData[type];
+
+            if (mainChart) {
+                mainChart.destroy();
+            }
+
+            mainChart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: labels,
+                    labels: dataObj.labels,
                     datasets: [
                         {
                             label: 'Mobile',
-                            data: mobileData,
+                            data: dataObj.mobile,
                             borderColor: '#3b82f6',
                             backgroundColor: 'rgba(59, 130, 246, 0.1)',
                             borderWidth: 2.5,
@@ -475,7 +555,7 @@
                         },
                         {
                             label: 'Fixed',
-                            data: fixedData,
+                            data: dataObj.fixed,
                             borderColor: '#ef4444',
                             backgroundColor: 'rgba(239, 68, 68, 0.1)',
                             borderWidth: 2.5,
