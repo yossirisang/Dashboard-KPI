@@ -42,7 +42,7 @@
             <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
                 <div>
                     <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Username</label>
-                    <input type="text" id="username" required placeholder="Masukkan username (contoh: SIAD)" 
+                    <input type="text" id="username" required placeholder="Masukkan username" 
                         class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-red-500 transition">
                 </div>
                 <div>
@@ -90,7 +90,7 @@
                 <!-- Info User Login -->
                 <div class="text-right pl-3 border-l border-slate-200">
                     <p id="userDisplayName" class="text-sm font-bold text-slate-800">-</p>
-                    <p id="userRole" class="text-xs text-slate-500">-</p>
+                    <p id="userRole" class="text-xs text-slate-500 uppercase font-medium">-</p>
                 </div>
 
                 <!-- Tombol Logout -->
@@ -106,24 +106,24 @@
             <!-- Cards Summary -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Sales SIR</p>
-                    <h3 id="statSir" class="text-2xl font-bold text-slate-800 mt-1">0%</h3>
-                    <p class="text-xs text-emerald-600 font-semibold mt-1">Target: 100%</p>
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Interaksi</p>
+                    <h3 id="statTotalInteraksi" class="text-2xl font-bold text-slate-800 mt-1">0</h3>
+                    <p class="text-xs text-slate-400 mt-1">Interaksi Agent</p>
                 </div>
                 <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Retention Rate</p>
-                    <h3 id="statRetention" class="text-2xl font-bold text-slate-800 mt-1">0%</h3>
-                    <p class="text-xs text-emerald-600 font-semibold mt-1">Target: 100%</p>
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Tiket</p>
+                    <h3 id="statTotalTiket" class="text-2xl font-bold text-slate-800 mt-1">0</h3>
+                    <p class="text-xs text-slate-400 mt-1">Tiket Penanganan</p>
                 </div>
                 <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Repeat Contact (RCR)</p>
-                    <h3 id="statRcr" class="text-2xl font-bold text-slate-800 mt-1">0%</h3>
-                    <p class="text-xs text-slate-400 mt-1">Mobile & Fixed Average</p>
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Sales</p>
+                    <h3 id="statSales" class="text-2xl font-bold text-slate-800 mt-1">0</h3>
+                    <p class="text-xs text-slate-400 mt-1">Pencapaian Sales</p>
                 </div>
                 <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Service Level (SLA)</p>
-                    <h3 id="statSla" class="text-2xl font-bold text-slate-800 mt-1">0%</h3>
-                    <p class="text-xs text-slate-400 mt-1">Pencapaian SLA</p>
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">FCR</p>
+                    <h3 id="statFcr" class="text-2xl font-bold text-slate-800 mt-1">0%</h3>
+                    <p class="text-xs text-emerald-600 font-semibold mt-1">First Contact Resolution</p>
                 </div>
             </div>
 
@@ -146,10 +146,10 @@
                         <thead class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-100">
                             <tr>
                                 <th class="p-4">Nama Agent</th>
-                                <th class="p-4">Interaction</th>
-                                <th class="p-4">Sales Rate</th>
-                                <th class="p-4">RCR Rate</th>
-                                <th class="p-4">Status</th>
+                                <th class="p-4">Total Interaksi</th>
+                                <th class="p-4">Total Tiket</th>
+                                <th class="p-4">Sales</th>
+                                <th class="p-4">FCR</th>
                             </tr>
                         </thead>
                         <tbody id="agentTableBody" class="divide-y divide-slate-100">
@@ -174,11 +174,22 @@
             }
         });
 
-        // Function Helper untuk Normalisasi Header Kolom dari Google Sheets
-        function getRowValue(row, columnName) {
+        // Helper membaca kolom berdasarkan Nama Header atau Indeks Kolom
+        function getRowValue(row, columnName, colIndex) {
             const keys = Object.keys(row);
+            
+            // 1. Coba cari berdasarkan nama header
             const matchedKey = keys.find(k => k.trim().toUpperCase() === columnName.trim().toUpperCase());
-            return matchedKey ? row[matchedKey] : "";
+            if (matchedKey && row[matchedKey] !== undefined) {
+                return row[matchedKey];
+            }
+            
+            // 2. Fallback berdasarkan indeks kolom (0-indexed, contoh Kolom I = indeks 8)
+            if (colIndex !== undefined && keys[colIndex] !== undefined) {
+                return row[keys[colIndex]];
+            }
+            
+            return "";
         }
 
         // Function Login menggunakan Data dari Google Sheets
@@ -201,24 +212,23 @@
                     btn.innerHTML = "<span>Masuk ke Dashboard</span>";
                     const users = results.data;
                     
-                    // Verifikasi match USERNAME & PASSWORD sesuai kolom di spreadsheet
+                    // Verifikasi USERNAME & PASSWORD
                     const matchedUser = users.find(u => {
-                        const sheetUser = getRowValue(u, "USERNAME").toString().trim().toLowerCase();
-                        const sheetPass = getRowValue(u, "PASSWORD").toString().trim().toLowerCase();
+                        const sheetUser = getRowValue(u, "USERNAME", 6).toString().trim().toLowerCase();
+                        const sheetPass = getRowValue(u, "PASSWORD", 7).toString().trim().toLowerCase();
                         return sheetUser === userIn && sheetPass === passIn && sheetUser !== "";
                     });
 
                     if (matchedUser) {
-                        const namaAgent = getRowValue(matchedUser, "NAMA AGENT") || getRowValue(matchedUser, "USERNAME");
-                        const spv = getRowValue(matchedUser, "SPV");
-                        const tl = getRowValue(matchedUser, "TL");
+                        const namaAgent = getRowValue(matchedUser, "NAMA AGENT", 3) || getRowValue(matchedUser, "USERNAME", 6);
+                        
+                        // Kolom I (Indeks 8 di spreadsheet)
+                        const userRoleVal = getRowValue(matchedUser, "ROLE", 8) || "AGENT";
 
                         const userData = {
-                            username: getRowValue(matchedUser, "USERNAME"),
+                            username: getRowValue(matchedUser, "USERNAME", 6),
                             nama: namaAgent,
-                            spv: spv,
-                            tl: tl,
-                            role: spv ? `SPV: ${spv}` : "Agent"
+                            role: userRoleVal
                         };
                         
                         localStorage.setItem("active_user", JSON.stringify(userData));
@@ -230,7 +240,7 @@
                 },
                 error: function(err) {
                     btn.innerHTML = "<span>Masuk ke Dashboard</span>";
-                    errDiv.innerText = "Gagal mengunduh data user dari Google Sheets. Pastikan sheet dipublikasikan.";
+                    errDiv.innerText = "Gagal mengunduh data user dari Google Sheets.";
                     errDiv.classList.remove("hidden");
                 }
             });
