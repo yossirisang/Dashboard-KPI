@@ -22,7 +22,7 @@
             // Link CSV Google Sheets Data Sales Per Bulan
             MONTHLY_SHEETS: {
                 "2026-08": "PASTE_LINK_CSV_SHEET_AGUSTUS_DI_SINI",
-                "2026-09": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6GPe6lGQy98sH4f9RcCPo9MkbtlIUSiOmqIav_gwEIEB9slBoi1GlocMGQk_3IQ/pub?gid=947655857&single=true&output=csv",
+                "2026-09": "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6GPe6lGQy98sH4f9RcCPo9MkbtlIUSiOmqIav_gwEIEB9slBoi1GlocMGQk_3IQ/pub?gid=407201662&single=true&output=csv",
                 "2026-10": "https://docs.google.com/spreadsheets/d/e/2PACX-1vR6xc3DQwV-xvuG_0d9OATKRjVoxP2pVzX5Si95vXBJXyrmo4WFVlc2K84aNfcIWQ/pub?gid=1693059487&single=true&output=csv"
             }
         };
@@ -365,7 +365,6 @@
         function renderSalesChart(mobileData, fixedData) {
             const ctx = document.getElementById("salesChartCanvas").getContext("2d");
             
-            // Label Tanggal 1 s/d 31 tanpa kata "Tgl"
             const labels = Array.from({length: 31}, (_, i) => `${i + 1}`);
 
             if (salesChart) {
