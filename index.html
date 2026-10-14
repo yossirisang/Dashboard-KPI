@@ -208,30 +208,28 @@
 
             Papa.parse(CONFIG.USERS_SHEET_URL, {
                 download: true,
-                header: false, // Membaca tanpa header agar aman berbasis indeks
+                header: false,
                 skipEmptyLines: true,
                 complete: function(results) {
                     btn.innerHTML = "<span>Masuk ke Dashboard</span>";
                     const rows = results.data;
-                    
-                    // Abaikan baris header (baris 1)
                     const userRows = rows.slice(1);
 
                     const matchedUser = userRows.find(r => {
-                        const sheetUser = getVal(r, 6).toLowerCase(); // Kolom G (USERNAME)
-                        const sheetPass = getVal(r, 7).toLowerCase(); // Kolom H (PASSWORD)
+                        const sheetUser = getVal(r, 6).toLowerCase();
+                        const sheetPass = getVal(r, 7).toLowerCase();
                         return sheetUser === userIn && sheetPass === passIn && sheetUser !== "";
                     });
 
                     if (matchedUser) {
                         const userData = {
-                            siad: getVal(matchedUser, 1),        // Kolom B
-                            login_id: getVal(matchedUser, 2),    // Kolom C
-                            nama: getVal(matchedUser, 3),        // Kolom D
-                            tl: getVal(matchedUser, 4),          // Kolom E
-                            spv: getVal(matchedUser, 5),         // Kolom F
-                            username: getVal(matchedUser, 6),    // Kolom G
-                            role: (getVal(matchedUser, 8) || "AGENT").toUpperCase() // Kolom I
+                            siad: getVal(matchedUser, 1),
+                            login_id: getVal(matchedUser, 2),
+                            nama: getVal(matchedUser, 3),
+                            tl: getVal(matchedUser, 4),
+                            spv: getVal(matchedUser, 5),
+                            username: getVal(matchedUser, 6),
+                            role: (getVal(matchedUser, 8) || "AGENT").toUpperCase()
                         };
                         
                         localStorage.setItem("active_user", JSON.stringify(userData));
@@ -262,7 +260,6 @@
             window.location.reload();
         }
 
-        // --- MENGAMBIL DATA SALES BULANAN (CSV 2 HEADER) ---
         function loadMonthlySalesData() {
             const selectedMonth = document.getElementById("selectMonth").value;
             const sheetUrl = CONFIG.MONTHLY_SHEETS[selectedMonth];
@@ -277,10 +274,9 @@
 
             Papa.parse(sheetUrl, {
                 download: true,
-                header: false, // Penting: False karena CSV memiliki 2 baris header
+                header: false,
                 skipEmptyLines: true,
                 complete: function(results) {
-                    // Ambil baris data agent mulai dari Baris ke-3 (index 2)
                     rawSalesData = results.data.slice(2);
                     processAndDisplaySalesData();
                 },
@@ -290,18 +286,16 @@
             });
         }
 
-        // --- FILTERING DASHBOARD BERDASARKAN ROLE & PENGOLAHAN GRAFIK ---
         function processAndDisplaySalesData() {
             const currentUser = JSON.parse(localStorage.getItem("active_user"));
             if (!currentUser) return;
 
             const role = currentUser.role.toUpperCase();
 
-            // Filter data agent sesuai Role Access
             let filteredRows = rawSalesData.filter(r => {
-                const agentSiad = getVal(r, 1).toLowerCase();  // Kolom B (SIAD)
-                const agentLogin = getVal(r, 2).toLowerCase(); // Kolom C (LOGIN)
-                const agentNama = getVal(r, 3).toLowerCase();  // Kolom D (NAMA AGENT)
+                const agentSiad = getVal(r, 1).toLowerCase();
+                const agentLogin = getVal(r, 2).toLowerCase();
+                const agentNama = getVal(r, 3).toLowerCase();
 
                 if (role === "AGENT") {
                     return agentSiad === currentUser.siad.toLowerCase() ||
@@ -310,11 +304,9 @@
                            agentSiad === currentUser.username.toLowerCase();
                 }
                 
-                // Tambahkan filter TL/SPV jika kolom TL/SPV ada di sheet sales
                 return true; 
             });
 
-            // Array untuk Grafik Per-Daily (Tanggal 1 sd 31)
             let dailyMobile = new Array(31).fill(0);
             let dailyFixed = new Array(31).fill(0);
 
@@ -329,7 +321,6 @@
                 let agentMobileSum = 0;
                 let agentFixedSum = 0;
 
-                // 1. Hitung Mobile Daily (Kolom G [6] sd AK [36])
                 for (let d = 0; d < 31; d++) {
                     const colIdx = 6 + d;
                     const val = parseInt(getVal(r, colIdx)) || 0;
@@ -337,7 +328,6 @@
                     agentMobileSum += val;
                 }
 
-                // 2. Hitung Fixed Daily (Kolom AM [38] sd BS [68])
                 for (let d = 0; d < 31; d++) {
                     const colIdx = 38 + d;
                     const val = parseInt(getVal(r, colIdx)) || 0;
@@ -362,26 +352,22 @@
 
             const grandTotalSales = totalMobileAll + totalFixedAll;
 
-            // Update UI Scorecard
             document.getElementById("statSales").innerText = grandTotalSales.toLocaleString("id-ID");
             document.getElementById("statSalesDetail").innerText = `Mobile: ${totalMobileAll.toLocaleString("id-ID")} | Fixed: ${totalFixedAll.toLocaleString("id-ID")}`;
 
-            // Update Tabel Agent
             const tbody = document.getElementById("agentTableBody");
             tbody.innerHTML = filteredRows.length > 0 ? tbodyHtml : `<tr><td colspan="5" class="p-4 text-center text-slate-400">Tidak ada data sales ditemukan.</td></tr>`;
 
-            // Render / Refresh Grafik Line Chart
             renderSalesChart(dailyMobile, dailyFixed);
         }
 
-        // --- RENDER GRAFIK LINE CHART (CHART.JS) ---
+        // --- RENDER GRAFIK LINE CHART ---
         function renderSalesChart(mobileData, fixedData) {
             const ctx = document.getElementById("salesChartCanvas").getContext("2d");
             
-            // Generate Label Tanggal 1 s/d 31
-            const labels = Array.from({length: 31}, (_, i) => `Tgl ${i + 1}`);
+            // Label Tanggal 1 s/d 31 tanpa kata "Tgl"
+            const labels = Array.from({length: 31}, (_, i) => `${i + 1}`);
 
-            // Hapus chart lama jika ada saat ganti bulan
             if (salesChart) {
                 salesChart.destroy();
             }
@@ -394,10 +380,10 @@
                         {
                             label: 'Mobile',
                             data: mobileData,
-                            borderColor: '#3b82f6', // Warna Biru
+                            borderColor: '#3b82f6',
                             backgroundColor: 'rgba(59, 130, 246, 0.1)',
                             borderWidth: 2.5,
-                            tension: 0.3, // Efek melengkung halus
+                            tension: 0.3,
                             fill: true,
                             pointRadius: 3,
                             pointHoverRadius: 6
@@ -405,7 +391,7 @@
                         {
                             label: 'Fixed',
                             data: fixedData,
-                            borderColor: '#ef4444', // Warna Merah
+                            borderColor: '#ef4444',
                             backgroundColor: 'rgba(239, 68, 68, 0.1)',
                             borderWidth: 2.5,
                             tension: 0.3,
@@ -419,21 +405,24 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: {
-                            display: false // Menggunakan legend kustom di atas card
-                        },
+                        legend: { display: false },
                         tooltip: {
                             mode: 'index',
                             intersect: false,
                             backgroundColor: '#1e293b',
                             titleFont: { size: 12, weight: 'bold' },
-                            bodyFont: { size: 12 }
+                            bodyFont: { size: 12 },
+                            callbacks: {
+                                title: function(context) {
+                                    return `Tanggal ${context[0].label}`;
+                                }
+                            }
                         }
                     },
                     scales: {
                         x: {
                             grid: { display: false },
-                            ticks: { font: { size: 10 } }
+                            ticks: { font: { size: 11, weight: '500' } }
                         },
                         y: {
                             beginAtZero: true,
