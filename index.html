@@ -28,8 +28,8 @@
                 },
                 "2026-09": {
                     sales: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6GPe6lGQy98sH4f9RcCPo9MkbtlIUSiOmqIav_gwEIEB9slBoi1GlocMGQk_3IQ/pub?gid=407201662&single=true&output=csv",
-                    interaksi: "",
-                    ticket: ""
+                    interaksi: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6GPe6lGQy98sH4f9RcCPo9MkbtlIUSiOmqIav_gwEIEB9slBoi1GlocMGQk_3IQ/pub?gid=626587370&single=true&output=csv",
+                    ticket: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6GPe6lGQy98sH4f9RcCPo9MkbtlIUSiOmqIav_gwEIEB9slBoi1GlocMGQk_3IQ/pub?gid=1183530911&single=true&output=csv"
                 }
             }
         };
@@ -226,7 +226,7 @@
             const endDateElem = document.getElementById("endDate");
 
             if (!startDateElem.value || !endDateElem.value) {
-                startDateElem.value = "2026-10-01";
+                startDateElem.value = "2026-09-01";
                 endDateElem.value = "2026-10-31";
             }
         }
@@ -261,26 +261,25 @@
                     });
 
                     if (matchedUser) {
-                        const userNama = getVal(matchedUser, 3); // Kolom D (NAMA AGENT)
-                        const userRole = (getVal(matchedUser, 8) || "AGENT").toUpperCase(); // Kolom I (ROLE)
+                        const userNama = getVal(matchedUser, 3);
+                        const userRole = (getVal(matchedUser, 8) || "AGENT").toUpperCase();
 
-                        // AMBIL ANGGOTA TIM DENGAN MEMERIKSA KOLOM E (TL) ATAU KOLOM F (SPV)
                         let teamMembers = [];
                         if (userRole.includes("TL") || userRole.includes("LEADER") || userRole.includes("SPV") || userRole.includes("SUPERVISOR")) {
                             const targetLeaderName = userNama.toLowerCase();
 
                             userRows.forEach(r => {
-                                const agentTl = getVal(r, 4).toLowerCase();  // Kolom E (TL)
-                                const agentSpv = getVal(r, 5).toLowerCase(); // Kolom F (SPV)
+                                const agentTl = getVal(r, 4).toLowerCase();  
+                                const agentSpv = getVal(r, 5).toLowerCase(); 
 
                                 const isMatchTL = userRole.includes("TL") || userRole.includes("LEADER");
                                 const isMatchSPV = userRole.includes("SPV") || userRole.includes("SUPERVISOR");
 
                                 if ((isMatchTL && agentTl === targetLeaderName) || (isMatchSPV && agentSpv === targetLeaderName)) {
                                     teamMembers.push({
-                                        siad: getVal(r, 1).toLowerCase(),  // Kolom B
-                                        login: getVal(r, 2).toLowerCase(), // Kolom C
-                                        nama: getVal(r, 3).toLowerCase()   // Kolom D
+                                        siad: getVal(r, 1).toLowerCase(),  
+                                        login: getVal(r, 2).toLowerCase(), 
+                                        nama: getVal(r, 3).toLowerCase()   
                                     });
                                 }
                             });
@@ -294,7 +293,7 @@
                             spv: getVal(matchedUser, 5),
                             username: getVal(matchedUser, 6),
                             role: userRole,
-                            teamMembers: teamMembers // Daftar pengenal anggota tim
+                            teamMembers: teamMembers 
                         };
                         
                         localStorage.setItem("active_user", JSON.stringify(userData));
@@ -429,19 +428,17 @@
                     if (!rows) return;
 
                     rows.forEach(r => {
-                        const agentSiad = getVal(r, 1).toLowerCase();  // Kolom B
-                        const agentLogin = getVal(r, 2).toLowerCase(); // Kolom C
-                        const agentNama = getVal(r, 3).toLowerCase();  // Kolom D
+                        const agentSiad = getVal(r, 1).toLowerCase();  
+                        const agentLogin = getVal(r, 2).toLowerCase(); 
+                        const agentNama = getVal(r, 3).toLowerCase();  
 
                         let isMatch = false;
 
-                        // 1. Jika AGENT -> Hanya data miliknya
                         if (role === "AGENT") {
                             isMatch = (agentSiad !== "" && agentSiad === currentUser.siad.toLowerCase()) ||
                                       (agentLogin !== "" && agentLogin === currentUser.login_id.toLowerCase()) ||
                                       (agentNama !== "" && agentNama === currentUser.nama.toLowerCase());
                         } 
-                        // 2. Jika TL atau SPV -> Pencocokan dengan daftar anggota tim dari sheet user
                         else if (role.includes("TL") || role.includes("LEADER") || role.includes("SPV") || role.includes("SUPERVISOR")) {
                             if (currentUser.teamMembers && currentUser.teamMembers.length > 0) {
                                 isMatch = currentUser.teamMembers.some(m => 
@@ -451,7 +448,6 @@
                                 );
                             }
                         } 
-                        // 3. Jika ADMIN / MANAGER -> Tampilkan Semua
                         else {
                             isMatch = true;
                         }
