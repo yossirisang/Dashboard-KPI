@@ -26,6 +26,8 @@
                 "2026-10": "https://docs.google.com/spreadsheets/d/e/2PACX-1vR6xc3DQwV-xvuG_0d9OATKRjVoxP2pVzX5Si95vXBJXyrmo4WFVlc2K84aNfcIWQ/pub?gid=1634651645&single=true&output=csv"
             }
         };
+
+        let rawMonthlyData = []; // Menyimpan data mentah bulan terpilih
     </script>
 
     <!-- 1. HALAMAN LOGIN -->
@@ -83,7 +85,6 @@
                         <option value="2026-10">Oktober 2026</option>
                         <option value="2026-09">September 2026</option>
                         <option value="2026-08">Agustus 2026</option>
-                        <option value="ALL">Komparasi All Month</option>
                     </select>
                 </div>
 
@@ -139,7 +140,7 @@
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div class="p-5 border-b border-slate-100 flex justify-between items-center">
                     <h3 class="text-sm font-bold text-slate-700">Detail Pencapaian Agent</h3>
-                    <input type="text" placeholder="Cari nama agent..." class="text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 w-48">
+                    <input type="text" id="searchInput" onkeyup="filterTableBySearch()" placeholder="Cari nama agent..." class="text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 w-48">
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-xs text-slate-600">
@@ -154,7 +155,7 @@
                         </thead>
                         <tbody id="agentTableBody" class="divide-y divide-slate-100">
                             <tr>
-                                <td colspan="5" class="p-4 text-center text-slate-400">Pilih periode bulan untuk menampilkan data</td>
+                                <td colspan="5" class="p-4 text-center text-slate-400">Memuat data...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -166,7 +167,6 @@
 
     <!-- LOGIKA JAVASCRIPT -->
     <script>
-        // Cek Sesi Login Saat Halaman Dimuat
         document.addEventListener("DOMContentLoaded", () => {
             const currentUser = JSON.parse(localStorage.getItem("active_user"));
             if (currentUser) {
@@ -174,25 +174,18 @@
             }
         });
 
-        // Helper membaca kolom berdasarkan Nama Header atau Indeks Kolom
         function getRowValue(row, columnName, colIndex) {
             const keys = Object.keys(row);
-            
-            // 1. Coba cari berdasarkan nama header
             const matchedKey = keys.find(k => k.trim().toUpperCase() === columnName.trim().toUpperCase());
             if (matchedKey && row[matchedKey] !== undefined) {
                 return row[matchedKey];
             }
-            
-            // 2. Fallback berdasarkan indeks kolom (0-indexed, Kolom I = indeks 8)
             if (colIndex !== undefined && keys[colIndex] !== undefined) {
                 return row[keys[colIndex]];
             }
-            
             return "";
         }
 
-        // Function Login menggunakan Data dari Google Sheets
         function handleLogin(e) {
             e.preventDefault();
             const userIn = document.getElementById("username").value.trim().toLowerCase();
@@ -203,7 +196,6 @@
             errDiv.classList.add("hidden");
             btn.innerHTML = "<span>Memverifikasi...</span>";
 
-            // Mengambil CSV User dari Google Sheets
             Papa.parse(CONFIG.USERS_SHEET_URL, {
                 download: true,
                 header: true,
@@ -212,7 +204,6 @@
                     btn.innerHTML = "<span>Masuk ke Dashboard</span>";
                     const users = results.data;
                     
-                    // Verifikasi USERNAME & PASSWORD
                     const matchedUser = users.find(u => {
                         const sheetUser = getRowValue(u, "USERNAME", 6).toString().trim().toLowerCase();
                         const sheetPass = getRowValue(u, "PASSWORD", 7).toString().trim().toLowerCase();
@@ -221,14 +212,20 @@
 
                     if (matchedUser) {
                         const namaAgent = getRowValue(matchedUser, "NAMA AGENT", 3) || getRowValue(matchedUser, "USERNAME", 6);
-                        
-                        // Kolom I (Indeks 8 di spreadsheet, header: ROLE)
                         const roleVal = getRowValue(matchedUser, "ROLE", 8) || "AGENT";
+                        const tlVal = getRowValue(matchedUser, "TL", 4);
+                        const spvVal = getRowValue(matchedUser, "SPV", 5);
+                        const siadVal = getRowValue(matchedUser, "SIAD", 1);
+                        const loginVal = getRowValue(matchedUser, "LOGIN", 2);
 
                         const userData = {
                             username: getRowValue(matchedUser, "USERNAME", 6),
                             nama: namaAgent,
-                            role: roleVal
+                            role: roleVal.trim().toUpperCase(),
+                            tl: tlVal,
+                            spv: spvVal,
+                            siad: siadVal,
+                            login_id: loginVal
                         };
                         
                         localStorage.setItem("active_user", JSON.stringify(userData));
@@ -259,23 +256,129 @@
             window.location.reload();
         }
 
-        // Function Memuat Data Bulanan dari Google Sheets
+        // --- MENGAMBIL DATA BULANAN & FILTER BERDASARKAN ROLE ---
         function loadMonthlyData() {
             const selectedMonth = document.getElementById("selectMonth").value;
             const sheetUrl = CONFIG.MONTHLY_SHEETS[selectedMonth];
+            const tbody = document.getElementById("agentTableBody");
 
             if (!sheetUrl || sheetUrl.startsWith("PASTE_LINK")) {
-                console.log("URL Sheet belum diatur untuk bulan:", selectedMonth);
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">URL Sheet belum diset untuk periode ini</td></tr>`;
                 return;
             }
+
+            tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">Memuat data periode...</td></tr>`;
 
             Papa.parse(sheetUrl, {
                 download: true,
                 header: true,
                 skipEmptyLines: true,
                 complete: function(results) {
-                    console.log("Data Bulanan Loaded:", results.data);
+                    rawMonthlyData = results.data;
+                    processAndDisplayData();
+                },
+                error: function() {
+                    tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-red-500">Gagal mengambil data bulan terpilih.</td></tr>`;
                 }
+            });
+        }
+
+        // --- LOGIKA UTAMA ROLE BASED ACCESS CONTROL (RBAC) ---
+        function processAndDisplayData() {
+            const currentUser = JSON.parse(localStorage.getItem("active_user"));
+            if (!currentUser) return;
+
+            const role = currentUser.role.toUpperCase();
+            
+            // Filter Data berdasarkan Role
+            let filteredData = rawMonthlyData.filter(row => {
+                const agentName = getRowValue(row, "NAMA AGENT").toString().trim().toLowerCase();
+                const agentLogin = getRowValue(row, "LOGIN").toString().trim().toLowerCase();
+                const agentSiad = getRowValue(row, "SIAD").toString().trim().toLowerCase();
+                const tlName = getRowValue(row, "TL").toString().trim().toLowerCase();
+                const spvName = getRowValue(row, "SPV").toString().trim().toLowerCase();
+
+                // 1. Jika AGENT -> Hanya data miliknya sendiri
+                if (role === "AGENT") {
+                    return agentName === currentUser.nama.trim().toLowerCase() ||
+                           agentLogin === currentUser.login_id.toString().trim().toLowerCase() ||
+                           agentSiad === currentUser.siad.toString().trim().toLowerCase() ||
+                           agentLogin === currentUser.username.toString().trim().toLowerCase();
+                }
+                
+                // 2. Jika TL (Team Leader) -> Hanya data anggota timnya
+                if (role === "TL" || role === "TEAM LEADER") {
+                    return tlName === currentUser.nama.trim().toLowerCase();
+                }
+
+                // 3. Jika SPV (Supervisor) -> Hanya data tim di bawah SPV
+                if (role === "SPV" || role === "SUPERVISOR") {
+                    return spvName === currentUser.nama.trim().toLowerCase();
+                }
+
+                // 4. Jika ADMIN / MANAGER -> Semua Data
+                return true;
+            });
+
+            renderDashboardUI(filteredData);
+        }
+
+        // --- RENDER KE CARDS & TABEL DASHBOARD ---
+        function renderDashboardUI(data) {
+            const tbody = document.getElementById("agentTableBody");
+
+            if (data.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">Tidak ada data yang tersedia untuk akses Anda.</td></tr>`;
+                document.getElementById("statTotalInteraksi").innerText = "0";
+                document.getElementById("statTotalTiket").innerText = "0";
+                document.getElementById("statSales").innerText = "0";
+                document.getElementById("statFcr").innerText = "0%";
+                return;
+            }
+
+            let sumInteraksi = 0;
+            let sumTiket = 0;
+            let sumSales = 0;
+            let rowsHtml = "";
+
+            data.forEach(row => {
+                const nama = getRowValue(row, "NAMA AGENT") || "-";
+                const interaksi = parseInt(getRowValue(row, "TOTAL INTERAKSI") || getRowValue(row, "INTERAKSI") || 0);
+                const tiket = parseInt(getRowValue(row, "TOTAL TIKET") || getRowValue(row, "TIKET") || 0);
+                const sales = parseInt(getRowValue(row, "SALES") || 0);
+                const fcr = getRowValue(row, "FCR") || "0%";
+
+                sumInteraksi += isNaN(interaksi) ? 0 : interaksi;
+                sumTiket += isNaN(tiket) ? 0 : tiket;
+                sumSales += isNaN(sales) ? 0 : sales;
+
+                rowsHtml += `
+                    <tr class="hover:bg-slate-50 transition">
+                        <td class="p-4 font-semibold text-slate-800">${nama}</td>
+                        <td class="p-4">${interaksi.toLocaleString("id-ID")}</td>
+                        <td class="p-4">${tiket.toLocaleString("id-ID")}</td>
+                        <td class="p-4">${sales.toLocaleString("id-ID")}</td>
+                        <td class="p-4 font-bold text-emerald-600">${fcr}</td>
+                    </tr>
+                `;
+            });
+
+            // Update Total Cards
+            document.getElementById("statTotalInteraksi").innerText = sumInteraksi.toLocaleString("id-ID");
+            document.getElementById("statTotalTiket").innerText = sumTiket.toLocaleString("id-ID");
+            document.getElementById("statSales").innerText = sumSales.toLocaleString("id-ID");
+            document.getElementById("statFcr").innerText = data.length > 0 ? (getRowValue(data[0], "FCR") || "0%") : "0%";
+
+            tbody.innerHTML = rowsHtml;
+        }
+
+        // Pencarian Nama Agent di Tabel
+        function filterTableBySearch() {
+            const query = document.getElementById("searchInput").value.toLowerCase();
+            const rows = document.querySelectorAll("#agentTableBody tr");
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                row.style.display = text.includes(query) ? "" : "none";
             });
         }
     </script>
