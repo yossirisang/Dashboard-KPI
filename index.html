@@ -226,7 +226,7 @@
             const endDateElem = document.getElementById("endDate");
 
             if (!startDateElem.value || !endDateElem.value) {
-                startDateElem.value = "2026-10-01";
+                startDateElem.value = "2026-09-01";
                 endDateElem.value = "2026-10-31";
             }
         }
@@ -408,8 +408,11 @@
                 const day = tempDate.getDate();
                 const mKey = `${yyyy}-${mm}`;
 
+                // Menentukan jumlah hari dalam bulan tersebut (30 / 31 hari)
+                const daysInMonth = new Date(yyyy, parseInt(mm), 0).getDate();
+
                 dateLabels.push(`${day} ${monthNames[tempDate.getMonth()]}`);
-                dateMap.push({ mKey: mKey, day: day });
+                dateMap.push({ mKey: mKey, day: day, daysInMonth: daysInMonth });
 
                 tempDate.setDate(tempDate.getDate() + 1);
             }
@@ -426,6 +429,11 @@
                 dateMap.forEach((dObj, idx) => {
                     const rows = dataMapObj[dObj.mKey];
                     if (!rows) return;
+
+                    // DOKUMEN DINAMIS INDEKS FIXED:
+                    // Bulan 30 hari (Sep) -> Indeks Fixed Tgl 1 = 38 (Kolom AM)
+                    // Bulan 31 hari (Okt) -> Indeks Fixed Tgl 1 = 39 (Kolom AN)
+                    const fixedBaseIndex = (dObj.daysInMonth === 30) ? 38 : 39;
 
                     rows.forEach(r => {
                         const agentSiad = getVal(r, 1).toLowerCase();  
@@ -453,10 +461,11 @@
                         }
 
                         if (isMatch) {
-                            // MOBILE Tanggal 1 = Kolom G (Index 6)
+                            // MOBILE: Tanggal 1 selalu Kolom G (Index 6)
                             const mobVal = parseInt(getVal(r, 6 + (dObj.day - 1))) || 0;
-                            // FIXED Tanggal 1 = Kolom AN (Index 39)
-                            const fixVal = parseInt(getVal(r, 39 + (dObj.day - 1))) || 0;
+                            
+                            // FIXED: Dinamis sesuai jumlah hari bulan tersebut
+                            const fixVal = parseInt(getVal(r, fixedBaseIndex + (dObj.day - 1))) || 0;
 
                             currentChartData[metricType].mobile[idx] += mobVal;
                             currentChartData[metricType].fixed[idx] += fixVal;
