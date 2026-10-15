@@ -29,7 +29,8 @@
                     ticket: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR6xc3DQwV-xvuG_0d9OATKRjVoxP2pVzX5Si95vXBJXyrmo4WFVlc2K84aNfcIWQ/pub?gid=1604890666&single=true&output=csv",
                     fcr: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR6xc3DQwV-xvuG_0d9OATKRjVoxP2pVzX5Si95vXBJXyrmo4WFVlc2K84aNfcIWQ/pub?gid=1634651645&single=true&output=csv",
                     sales_report: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR6xc3DQwV-xvuG_0d9OATKRjVoxP2pVzX5Si95vXBJXyrmo4WFVlc2K84aNfcIWQ/pub?gid=1657971183&single=true&output=csv",
-                    retensi_report: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR6xc3DQwV-xvuG_0d9OATKRjVoxP2pVzX5Si95vXBJXyrmo4WFVlc2K84aNfcIWQ/pub?gid=587588832&single=true&output=csv"
+                    retensi_report: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR6xc3DQwV-xvuG_0d9OATKRjVoxP2pVzX5Si95vXBJXyrmo4WFVlc2K84aNfcIWQ/pub?gid=587588832&single=true&output=csv",
+                    aht_report: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR6xc3DQwV-xvuG_0d9OATKRjVoxP2pVzX5Si95vXBJXyrmo4WFVlc2K84aNfcIWQ/pub?gid=1883424615&single=true&output=csv"
                 },
                 "2026-09": {
                     sales: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6GPe6lGQy98sH4f9RcCPo9MkbtlIUSiOmqIav_gwEIEB9slBoi1GlocMGQk_3IQ/pub?gid=407201662&single=true&output=csv",
@@ -37,7 +38,8 @@
                     ticket: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6GPe6lGQy98sH4f9RcCPo9MkbtlIUSiOmqIav_gwEIEB9slBoi1GlocMGQk_3IQ/pub?gid=1183530911&single=true&output=csv",
                     fcr: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6GPe6lGQy98sH4f9RcCPo9MkbtlIUSiOmqIav_gwEIEB9slBoi1GlocMGQk_3IQ/pub?gid=947655857&single=true&output=csv",
                     sales_report: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6GPe6lGQy98sH4f9RcCPo9MkbtlIUSiOmqIav_gwEIEB9slBoi1GlocMGQk_3IQ/pub?gid=1613088010&single=true&output=csv",
-                    retensi_report: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6GPe6lGQy98sH4f9RcCPo9MkbtlIUSiOmqIav_gwEIEB9slBoi1GlocMGQk_3IQ/pub?gid=480068319&single=true&output=csv"
+                    retensi_report: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6GPe6lGQy98sH4f9RcCPo9MkbtlIUSiOmqIav_gwEIEB9slBoi1GlocMGQk_3IQ/pub?gid=480068319&single=true&output=csv",
+                    aht_report: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6GPe6lGQy98sH4f9RcCPo9MkbtlIUSiOmqIav_gwEIEB9slBoi1GlocMGQk_3IQ/pub?gid=645084504&single=true&output=csv"
                 }
             }
         };
@@ -52,6 +54,7 @@
         let mainChart = null; 
         let selectedAgentForModal = null;
         let selectedReportMonth = "2026-10";
+        let activeModalTab = "summary"; // 'summary' atau 'aht'
     </script>
 
     <!-- 1. HALAMAN LOGIN -->
@@ -275,9 +278,9 @@
         </main>
     </div>
 
-    <!-- 3. MODAL POPUP REPORT DETAIL (MENYELURUH ALL-IN-ONE) -->
+    <!-- 3. MODAL POPUP REPORT DETAIL -->
     <div id="reportModal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             
             <!-- Modal Header -->
             <div class="p-5 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-20 shadow-sm">
@@ -290,12 +293,22 @@
                 </div>
 
                 <div class="flex items-center gap-3">
+                    <!-- Switch Tab Modal (Summary vs AHT) -->
+                    <div class="flex bg-slate-100 p-1 rounded-xl">
+                        <button id="btnTabSummary" onclick="switchModalTab('summary')" class="px-3 py-1 text-xs font-bold rounded-lg transition bg-white text-slate-800 shadow-sm flex items-center gap-1">
+                            <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i> Ringkasan
+                        </button>
+                        <button id="btnTabAht" onclick="switchModalTab('aht')" class="px-3 py-1 text-xs font-bold rounded-lg transition text-slate-500 hover:text-slate-800 flex items-center gap-1">
+                            <i data-lucide="clock" class="w-3.5 h-3.5"></i> Report AHT
+                        </button>
+                    </div>
+
                     <!-- Switch Bulan -->
-                    <div class="flex gap-1.5 items-center bg-slate-100 p-1 rounded-xl">
-                        <button id="btnModalSep" onclick="changeReportMonth('2026-09')" class="px-3 py-1 text-xs font-bold rounded-lg transition bg-white text-slate-600 border border-slate-200 hover:bg-slate-50">
+                    <div class="flex gap-1 items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+                        <button id="btnModalSep" onclick="changeReportMonth('2026-09')" class="px-2.5 py-1 text-xs font-bold rounded-lg transition bg-white text-slate-600 hover:bg-slate-50">
                             Sep
                         </button>
-                        <button id="btnModalOkt" onclick="changeReportMonth('2026-10')" class="px-3 py-1 text-xs font-bold rounded-lg transition bg-red-600 text-white shadow-sm">
+                        <button id="btnModalOkt" onclick="changeReportMonth('2026-10')" class="px-2.5 py-1 text-xs font-bold rounded-lg transition bg-red-600 text-white shadow-sm">
                             Okt
                         </button>
                     </div>
@@ -306,8 +319,8 @@
                 </div>
             </div>
 
-            <!-- Modal Content -->
-            <div class="p-6 space-y-6">
+            <!-- Modal Content Area -->
+            <div class="p-6">
                 <div id="modalReportContent">
                     <div class="text-center py-6 text-slate-400 text-xs">Memuat data report...</div>
                 </div>
@@ -670,7 +683,7 @@
             renderChart(activeChartType);
         }
 
-        // FUNGSI MODAL POPUP
+        // FUNGSI MODAL POPUP & CONTROL TAB
         async function openReportModal(agent) {
             selectedAgentForModal = agent;
             document.getElementById("modalAgentName").innerText = agent.nama;
@@ -678,18 +691,39 @@
             document.getElementById("reportModal").classList.remove("hidden");
 
             selectedReportMonth = "2026-10";
+            activeModalTab = "summary";
+            updateModalTabUI();
             updateModalMonthButtons();
-            await loadAllReportsInOneView();
+            await loadActiveModalContent();
         }
 
         function closeReportModal() {
             document.getElementById("reportModal").classList.add("hidden");
         }
 
+        function switchModalTab(tab) {
+            activeModalTab = tab;
+            updateModalTabUI();
+            loadActiveModalContent();
+        }
+
         function changeReportMonth(mKey) {
             selectedReportMonth = mKey;
             updateModalMonthButtons();
-            loadAllReportsInOneView();
+            loadActiveModalContent();
+        }
+
+        function updateModalTabUI() {
+            const btnSummary = document.getElementById("btnTabSummary");
+            const btnAht = document.getElementById("btnTabAht");
+
+            if (activeModalTab === "summary") {
+                btnSummary.className = "px-3 py-1 text-xs font-bold rounded-lg transition bg-white text-slate-800 shadow-sm flex items-center gap-1";
+                btnAht.className = "px-3 py-1 text-xs font-bold rounded-lg transition text-slate-500 hover:text-slate-800 flex items-center gap-1";
+            } else {
+                btnAht.className = "px-3 py-1 text-xs font-bold rounded-lg transition bg-white text-slate-800 shadow-sm flex items-center gap-1";
+                btnSummary.className = "px-3 py-1 text-xs font-bold rounded-lg transition text-slate-500 hover:text-slate-800 flex items-center gap-1";
+            }
         }
 
         function updateModalMonthButtons() {
@@ -697,18 +731,26 @@
             const btnOkt = document.getElementById("btnModalOkt");
 
             if (selectedReportMonth === "2026-09") {
-                btnSep.className = "px-3 py-1 text-xs font-bold rounded-lg transition bg-red-600 text-white shadow-sm";
-                btnOkt.className = "px-3 py-1 text-xs font-bold rounded-lg transition bg-white text-slate-600 border border-slate-200 hover:bg-slate-50";
+                btnSep.className = "px-2.5 py-1 text-xs font-bold rounded-lg transition bg-red-600 text-white shadow-sm";
+                btnOkt.className = "px-2.5 py-1 text-xs font-bold rounded-lg transition bg-white text-slate-600 border border-slate-200 hover:bg-slate-50";
             } else {
-                btnOkt.className = "px-3 py-1 text-xs font-bold rounded-lg transition bg-red-600 text-white shadow-sm";
-                btnSep.className = "px-3 py-1 text-xs font-bold rounded-lg transition bg-white text-slate-600 border border-slate-200 hover:bg-slate-50";
+                btnOkt.className = "px-2.5 py-1 text-xs font-bold rounded-lg transition bg-red-600 text-white shadow-sm";
+                btnSep.className = "px-2.5 py-1 text-xs font-bold rounded-lg transition bg-white text-slate-600 border border-slate-200 hover:bg-slate-50";
             }
         }
 
-        // LOAD SEMUA REPORT (FCR, SALES, RETENSI) SECARA MENYELURUH
+        async function loadActiveModalContent() {
+            if (activeModalTab === "summary") {
+                await loadAllReportsInOneView();
+            } else {
+                await loadAhtReportView();
+            }
+        }
+
+        // LOAD TAB 1: SUMMARY (FCR, SALES, RETENSI)
         async function loadAllReportsInOneView() {
             const container = document.getElementById("modalReportContent");
-            container.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs flex justify-center items-center gap-2"><i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Memuat seluruh report agen...</div>`;
+            container.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs flex justify-center items-center gap-2"><i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Memuat ringkasan report agen...</div>`;
             setTimeout(() => { lucide.createIcons(); }, 10);
 
             const monthUrls = CONFIG.MONTHLY_METRICS[selectedReportMonth];
@@ -717,7 +759,6 @@
                 return;
             }
 
-            // Fetch 3 CSV Sekaligus
             const [fcrRows, salesRows, retensiRows] = await Promise.all([
                 fetchCsvData(monthUrls.fcr, 0),
                 fetchCsvData(monthUrls.sales_report, 0),
@@ -730,8 +771,8 @@
             const findAgentRow = (rows) => {
                 if (!rows || rows.length === 0) return null;
                 return rows.find(r => {
-                    const s = getVal(r, 1).toLowerCase().trim(); // Kolom B (SIAD)
-                    const n = getVal(r, 3).toLowerCase().trim(); // Kolom D (Nama)
+                    const s = getVal(r, 1).toLowerCase().trim();
+                    const n = getVal(r, 3).toLowerCase().trim();
                     return (targetSiad !== "" && s === targetSiad) || 
                            (targetNama !== "" && n === targetNama) ||
                            (targetNama !== "" && n.includes(targetNama));
@@ -765,19 +806,19 @@
             const fcrFixTot = fcrMatch ? getVal(fcrMatch, 35) || "0%" : "0%"; 
             const fcrFixRec = fcrMatch ? getVal(fcrMatch, 36) || "0%" : "0%"; 
 
-            // DIUBAH: Mengambil %FCR ALL langsung dari Kolom AL (Index 37) pada CSV FCR
+            // Kolom AL (Index 37) di Sheet FCR
             const fcrAllVal = fcrMatch ? getVal(fcrMatch, 37) || "0%" : "0%";
 
             // 2. DATA SALES
-            const salesMob = salesMatch ? getVal(salesMatch, 6) || "0" : "0";  // Kolom G
-            const salesFix = salesMatch ? getVal(salesMatch, 7) || "0" : "0";  // Kolom H
-            const pctMob   = salesMatch ? getVal(salesMatch, 10) || "0%" : "0%"; // Kolom K
-            const pctFix   = salesMatch ? getVal(salesMatch, 11) || "0%" : "0%"; // Kolom L
+            const salesMob = salesMatch ? getVal(salesMatch, 6) || "0" : "0";  
+            const salesFix = salesMatch ? getVal(salesMatch, 7) || "0" : "0";  
+            const pctMob   = salesMatch ? getVal(salesMatch, 10) || "0%" : "0%"; 
+            const pctFix   = salesMatch ? getVal(salesMatch, 11) || "0%" : "0%"; 
 
             // 3. DATA RETENSI
-            const retensiVal    = retensiMatch ? getVal(retensiMatch, 6) || "0" : "0";  // Kolom G (Retensi)
-            const kipRetensiVal = retensiMatch ? getVal(retensiMatch, 7) || "0" : "0";  // Kolom H (KIP Retensi)
-            const pctRetensiVal = retensiMatch ? getVal(retensiMatch, 8) || "0%" : "0%"; // Kolom I (% Retensi)
+            const retensiVal    = retensiMatch ? getVal(retensiMatch, 6) || "0" : "0";  
+            const kipRetensiVal = retensiMatch ? getVal(retensiMatch, 7) || "0" : "0";  
+            const pctRetensiVal = retensiMatch ? getVal(retensiMatch, 8) || "0%" : "0%"; 
 
             container.innerHTML = `
                 <!-- BAGIAN 1: FCR & INTERAKSI -->
@@ -928,6 +969,87 @@
                         <div class="bg-purple-50/50 p-3 rounded-xl border border-purple-100 text-center">
                             <span class="text-slate-500 block text-[10px] font-semibold uppercase">% Retensi</span>
                             <span class="text-base font-extrabold text-purple-700 mt-0.5 block">${pctRetensiVal}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            setTimeout(() => { lucide.createIcons(); }, 50);
+        }
+
+        // LOAD TAB 2: REPORT AHT HARIAN (TANGGAL 1 - 31 & TOTAL)
+        async function loadAhtReportView() {
+            const container = document.getElementById("modalReportContent");
+            container.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs flex justify-center items-center gap-2"><i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Memuat report AHT...</div>`;
+            setTimeout(() => { lucide.createIcons(); }, 10);
+
+            const ahtUrl = CONFIG.MONTHLY_METRICS[selectedReportMonth]?.aht_report;
+            if (!ahtUrl) {
+                container.innerHTML = `<div class="text-center py-6 text-red-500 text-xs">Link data AHT bulan ini belum tersedia.</div>`;
+                return;
+            }
+
+            const ahtRows = await fetchCsvData(ahtUrl, 0);
+            if (!ahtRows || ahtRows.length === 0) {
+                container.innerHTML = `<div class="text-center py-6 text-red-500 text-xs">Gagal mengunduh data AHT bulan ini.</div>`;
+                return;
+            }
+
+            const targetSiad = (selectedAgentForModal.siad || "").toLowerCase().trim();
+            const targetNama = (selectedAgentForModal.nama || "").toLowerCase().trim();
+
+            const matchRow = ahtRows.find(r => {
+                const s = getVal(r, 1).toLowerCase().trim(); // Kolom B (SIAD)
+                const n = getVal(r, 3).toLowerCase().trim(); // Kolom D (Nama)
+                return (targetSiad !== "" && s === targetSiad) || 
+                       (targetNama !== "" && n === targetNama) ||
+                       (targetNama !== "" && n.includes(targetNama));
+            });
+
+            if (!matchRow) {
+                container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">Data agent ini tidak ditemukan pada report AHT bulan ${selectedReportMonth === "2026-09" ? "September" : "Oktober"}.</div>`;
+                return;
+            }
+
+            const totalAht = getVal(matchRow, 37) || "-"; // Kolom AL (Total)
+
+            // Buat Grid Harian untuk Tanggal 1 s/d 31 (Kolom G/Idx 6 s/d Kolom AK/Idx 36)
+            let dailyGridHtml = "";
+            for (let d = 1; d <= 31; d++) {
+                const colIdx = 5 + d; // Tanggal 1 -> Idx 6 (Kolom G)
+                const val = getVal(matchRow, colIdx) || "-";
+                
+                dailyGridHtml += `
+                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-center">
+                        <span class="text-[10px] text-slate-400 font-bold block uppercase mb-0.5">TGL ${d}</span>
+                        <span class="text-xs font-extrabold text-slate-800">${val}</span>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = `
+                <div class="space-y-4">
+                    <!-- HEADER METRIC TOTAL -->
+                    <div class="bg-red-50 p-4 rounded-xl border border-red-200 flex justify-between items-center text-xs">
+                        <div class="flex items-center gap-2">
+                            <div class="p-2 bg-red-600 text-white rounded-lg">
+                                <i data-lucide="clock" class="w-4 h-4"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-slate-800 text-sm">Average Handling Time (AHT) Total</h4>
+                                <p class="text-slate-500 text-[11px]">Akumulasi performa AHT bulanan agen</p>
+                            </div>
+                        </div>
+                        <span class="text-xl font-black text-red-600 bg-white px-3 py-1.5 rounded-lg border border-red-100 shadow-sm">${totalAht}</span>
+                    </div>
+
+                    <!-- GRID MATRIX HARIAN TANGGAL 1 - 31 -->
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-700 mb-2 flex items-center gap-1.5">
+                            <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i> Rincian AHT Harian (Tanggal 1 - 31)
+                        </h4>
+                        <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-7 gap-2">
+                            ${dailyGridHtml}
                         </div>
                     </div>
                 </div>
