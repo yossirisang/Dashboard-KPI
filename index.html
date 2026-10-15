@@ -27,13 +27,15 @@
                     sales: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR6xc3DQwV-xvuG_0d9OATKRjVoxP2pVzX5Si95vXBJXyrmo4WFVlc2K84aNfcIWQ/pub?gid=1693059487&single=true&output=csv",
                     interaksi: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR6xc3DQwV-xvuG_0d9OATKRjVoxP2pVzX5Si95vXBJXyrmo4WFVlc2K84aNfcIWQ/pub?gid=2115127099&single=true&output=csv",
                     ticket: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR6xc3DQwV-xvuG_0d9OATKRjVoxP2pVzX5Si95vXBJXyrmo4WFVlc2K84aNfcIWQ/pub?gid=1604890666&single=true&output=csv",
-                    fcr: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR6xc3DQwV-xvuG_0d9OATKRjVoxP2pVzX5Si95vXBJXyrmo4WFVlc2K84aNfcIWQ/pub?gid=1634651645&single=true&output=csv"
+                    fcr: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR6xc3DQwV-xvuG_0d9OATKRjVoxP2pVzX5Si95vXBJXyrmo4WFVlc2K84aNfcIWQ/pub?gid=1634651645&single=true&output=csv",
+                    sales_report: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR6xc3DQwV-xvuG_0d9OATKRjVoxP2pVzX5Si95vXBJXyrmo4WFVlc2K84aNfcIWQ/pub?gid=1657971183&single=true&output=csv"
                 },
                 "2026-09": {
                     sales: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6GPe6lGQy98sH4f9RcCPo9MkbtlIUSiOmqIav_gwEIEB9slBoi1GlocMGQk_3IQ/pub?gid=407201662&single=true&output=csv",
                     interaksi: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6GPe6lGQy98sH4f9RcCPo9MkbtlIUSiOmqIav_gwEIEB9slBoi1GlocMGQk_3IQ/pub?gid=626587370&single=true&output=csv",
                     ticket: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6GPe6lGQy98sH4f9RcCPo9MkbtlIUSiOmqIav_gwEIEB9slBoi1GlocMGQk_3IQ/pub?gid=1183530911&single=true&output=csv",
-                    fcr: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6GPe6lGQy98sH4f9RcCPo9MkbtlIUSiOmqIav_gwEIEB9slBoi1GlocMGQk_3IQ/pub?gid=947655857&single=true&output=csv"
+                    fcr: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6GPe6lGQy98sH4f9RcCPo9MkbtlIUSiOmqIav_gwEIEB9slBoi1GlocMGQk_3IQ/pub?gid=947655857&single=true&output=csv",
+                    sales_report: "https://docs.google.com/spreadsheets/d/e/2PACX-1vS6GPe6lGQy98sH4f9RcCPo9MkbtlIUSiOmqIav_gwEIEB9slBoi1GlocMGQk_3IQ/pub?gid=1613088010&single=true&output=csv"
                 }
             }
         };
@@ -47,7 +49,8 @@
         };
         let mainChart = null; 
         let selectedAgentForModal = null;
-        let selectedFcrMonth = "2026-10";
+        let selectedReportMonth = "2026-10";
+        let activeReportCategory = "fcr";
     </script>
 
     <!-- 1. HALAMAN LOGIN -->
@@ -289,25 +292,37 @@
                 </button>
             </div>
 
-            <!-- Modal Body & Month Switcher -->
-            <div class="p-6 space-y-6">
-                <!-- Select Bulan -->
-                <div class="flex items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200">
-                    <span class="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-                        <i data-lucide="calendar" class="w-4 h-4 text-slate-400"></i> Pilih Bulan Report:
-                    </span>
-                    <div class="flex gap-2">
-                        <button id="btnModalSep" onclick="changeFcrMonth('2026-09')" class="px-3 py-1 text-xs font-bold rounded-lg transition bg-white text-slate-600 border border-slate-200 hover:bg-slate-50">
-                            September
+            <!-- Modal Controls (Bulan & Kategori Report) -->
+            <div class="p-6 space-y-4">
+                
+                <!-- Navigation Control Bar -->
+                <div class="flex flex-wrap items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-200 gap-3">
+                    
+                    <!-- Switch Kategori Report (FCR vs Sales) -->
+                    <div class="flex bg-slate-200/70 p-1 rounded-lg">
+                        <button id="btnCatFcr" onclick="changeReportCategory('fcr')" class="px-3 py-1 text-xs font-bold rounded-md transition bg-white text-slate-800 shadow-sm flex items-center gap-1">
+                            <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-600"></i> FCR
                         </button>
-                        <button id="btnModalOkt" onclick="changeFcrMonth('2026-10')" class="px-3 py-1 text-xs font-bold rounded-lg transition bg-red-600 text-white shadow-sm">
-                            Oktober
+                        <button id="btnCatSales" onclick="changeReportCategory('sales')" class="px-3 py-1 text-xs font-bold rounded-md transition text-slate-500 hover:text-slate-800 flex items-center gap-1">
+                            <i data-lucide="circle-dollar-sign" class="w-3.5 h-3.5 text-amber-600"></i> Sales
                         </button>
                     </div>
+
+                    <!-- Switch Bulan -->
+                    <div class="flex gap-1.5 items-center">
+                        <span class="text-[11px] font-semibold text-slate-400 mr-1">Bulan:</span>
+                        <button id="btnModalSep" onclick="changeReportMonth('2026-09')" class="px-2.5 py-1 text-xs font-bold rounded-lg transition bg-white text-slate-600 border border-slate-200 hover:bg-slate-50">
+                            Sep
+                        </button>
+                        <button id="btnModalOkt" onclick="changeReportMonth('2026-10')" class="px-2.5 py-1 text-xs font-bold rounded-lg transition bg-red-600 text-white shadow-sm">
+                            Okt
+                        </button>
+                    </div>
+
                 </div>
 
                 <!-- Report Content Container -->
-                <div id="fcrReportContent" class="space-y-4">
+                <div id="modalReportContent" class="space-y-4 pt-2">
                     <div class="text-center py-6 text-slate-400 text-xs">Memuat data report...</div>
                 </div>
             </div>
@@ -633,7 +648,7 @@
                         <td class="p-4 font-semibold text-red-600">${ag.salesFix.toLocaleString("id-ID")}</td>
                         <td class="p-4 font-bold text-slate-800">${totalSales.toLocaleString("id-ID")}</td>
                         <td class="p-4 text-center">
-                            <button onclick="openReportModal(${agDataJson})" title="Lihat Report FCR Detail" class="p-2 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-xl transition border border-slate-200 inline-flex items-center justify-center">
+                            <button onclick="openReportModal(${agDataJson})" title="Lihat Detail Report Agent" class="p-2 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-xl transition border border-slate-200 inline-flex items-center justify-center">
                                 <i data-lucide="file-text" class="w-4 h-4"></i>
                             </button>
                         </td>
@@ -669,104 +684,126 @@
             renderChart(activeChartType);
         }
 
-        // FUNGSI BUKA MODAL & DETAIL REPORT FCR
+        // FUNGSI MODAL & SWITCHER REPORT
         async function openReportModal(agent) {
             selectedAgentForModal = agent;
             document.getElementById("modalAgentName").innerText = agent.nama;
             document.getElementById("modalAgentSiad").innerText = `SIAD: ${agent.siad}`;
             document.getElementById("reportModal").classList.remove("hidden");
 
-            selectedFcrMonth = "2026-10";
-            updateModalMonthButtons();
+            selectedReportMonth = "2026-10";
+            activeReportCategory = "fcr";
 
-            await loadFcrReportDetail();
+            updateModalControlsUI();
+            await loadSelectedModalReport();
         }
 
         function closeReportModal() {
             document.getElementById("reportModal").classList.add("hidden");
         }
 
-        function changeFcrMonth(mKey) {
-            selectedFcrMonth = mKey;
-            updateModalMonthButtons();
-            loadFcrReportDetail();
+        function changeReportMonth(mKey) {
+            selectedReportMonth = mKey;
+            updateModalControlsUI();
+            loadSelectedModalReport();
         }
 
-        function updateModalMonthButtons() {
+        function changeReportCategory(cat) {
+            activeReportCategory = cat;
+            updateModalControlsUI();
+            loadSelectedModalReport();
+        }
+
+        function updateModalControlsUI() {
             const btnSep = document.getElementById("btnModalSep");
             const btnOkt = document.getElementById("btnModalOkt");
+            const btnFcr = document.getElementById("btnCatFcr");
+            const btnSales = document.getElementById("btnCatSales");
 
-            if (selectedFcrMonth === "2026-09") {
-                btnSep.className = "px-3 py-1 text-xs font-bold rounded-lg transition bg-red-600 text-white shadow-sm";
-                btnOkt.className = "px-3 py-1 text-xs font-bold rounded-lg transition bg-white text-slate-600 border border-slate-200 hover:bg-slate-50";
+            // Style Month Buttons
+            if (selectedReportMonth === "2026-09") {
+                btnSep.className = "px-2.5 py-1 text-xs font-bold rounded-lg transition bg-red-600 text-white shadow-sm";
+                btnOkt.className = "px-2.5 py-1 text-xs font-bold rounded-lg transition bg-white text-slate-600 border border-slate-200 hover:bg-slate-50";
             } else {
-                btnOkt.className = "px-3 py-1 text-xs font-bold rounded-lg transition bg-red-600 text-white shadow-sm";
-                btnSep.className = "px-3 py-1 text-xs font-bold rounded-lg transition bg-white text-slate-600 border border-slate-200 hover:bg-slate-50";
+                btnOkt.className = "px-2.5 py-1 text-xs font-bold rounded-lg transition bg-red-600 text-white shadow-sm";
+                btnSep.className = "px-2.5 py-1 text-xs font-bold rounded-lg transition bg-white text-slate-600 border border-slate-200 hover:bg-slate-50";
+            }
+
+            // Style Category Buttons
+            if (activeReportCategory === "fcr") {
+                btnFcr.className = "px-3 py-1 text-xs font-bold rounded-md transition bg-white text-slate-800 shadow-sm flex items-center gap-1";
+                btnSales.className = "px-3 py-1 text-xs font-bold rounded-md transition text-slate-500 hover:text-slate-800 flex items-center gap-1";
+            } else {
+                btnSales.className = "px-3 py-1 text-xs font-bold rounded-md transition bg-white text-slate-800 shadow-sm flex items-center gap-1";
+                btnFcr.className = "px-3 py-1 text-xs font-bold rounded-md transition text-slate-500 hover:text-slate-800 flex items-center gap-1";
             }
         }
 
-        async function loadFcrReportDetail() {
-            const container = document.getElementById("fcrReportContent");
-            container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs flex justify-center items-center gap-2"><i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Memuat data report FCR...</div>`;
+        async function loadSelectedModalReport() {
+            if (activeReportCategory === 'fcr') {
+                await renderFcrReport();
+            } else {
+                await renderSalesReport();
+            }
+        }
+
+        // RENDER REPORT FCR
+        async function renderFcrReport() {
+            const container = document.getElementById("modalReportContent");
+            container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs flex justify-center items-center gap-2"><i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Memuat report FCR...</div>`;
             setTimeout(() => { lucide.createIcons(); }, 10);
 
-            const fcrUrl = CONFIG.MONTHLY_METRICS[selectedFcrMonth]?.fcr;
+            const fcrUrl = CONFIG.MONTHLY_METRICS[selectedReportMonth]?.fcr;
             if (!fcrUrl) {
                 container.innerHTML = `<div class="text-center py-6 text-red-500 text-xs">Link data FCR bulan ini belum tersedia.</div>`;
                 return;
             }
 
-            // Parsing FCR tanpa memotong baris teratas (skip 0 header row)
             const fcrRows = await fetchCsvData(fcrUrl, 0);
             if (!fcrRows || fcrRows.length === 0) {
-                container.innerHTML = `<div class="text-center py-6 text-red-500 text-xs">Gagal mengunduh sheet FCR bulan ini.</div>`;
+                container.innerHTML = `<div class="text-center py-6 text-red-500 text-xs">Gagal mengunduh data FCR bulan ini.</div>`;
                 return;
             }
 
-            // Match Agen yang presisi & tahan pergeseran nama/SIAD
             const targetSiad = (selectedAgentForModal.siad || "").toLowerCase().trim();
             const targetNama = (selectedAgentForModal.nama || "").toLowerCase().trim();
 
             const matchRow = fcrRows.find(r => {
-                const s = getVal(r, 1).toLowerCase().trim(); // Kolom B (SIAD)
-                const n = getVal(r, 3).toLowerCase().trim(); // Kolom D (Nama)
-                
+                const s = getVal(r, 1).toLowerCase().trim();
+                const n = getVal(r, 3).toLowerCase().trim();
                 return (targetSiad !== "" && s === targetSiad) || 
                        (targetNama !== "" && n === targetNama) ||
-                       (targetNama !== "" && n.includes(targetNama)) ||
-                       (targetNama !== "" && targetNama.includes(n) && n.length > 3);
+                       (targetNama !== "" && n.includes(targetNama));
             });
 
             if (!matchRow) {
-                container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">Data agent ini tidak ditemukan pada sheet FCR bulan ${selectedFcrMonth === "2026-09" ? "September" : "Oktober"}.</div>`;
+                container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">Data agent ini tidak ditemukan pada report FCR bulan ${selectedReportMonth === "2026-09" ? "September" : "Oktober"}.</div>`;
                 return;
             }
 
-            // EKSTRAKSI HASIL DARI KOLOM SESUAI STRUKTUR SHEET:
-            const intMobTot = getVal(matchRow, 11) || "0";  // Kolom L
-            const intFixTot = getVal(matchRow, 17) || "0";  // Kolom R
-            const intRecip  = getVal(matchRow, 18) || "0";  // Kolom S
+            const intMobTot = getVal(matchRow, 11) || "0";  
+            const intFixTot = getVal(matchRow, 17) || "0";  
+            const intRecip  = getVal(matchRow, 18) || "0";  
 
-            const tktMobTot = getVal(matchRow, 22) || "0";  // Kolom W
-            const tktFixTot = getVal(matchRow, 26) || "0";  // Kolom AA
+            const tktMobTot = getVal(matchRow, 22) || "0";  
+            const tktFixTot = getVal(matchRow, 26) || "0";  
 
-            const fcrMobK   = getVal(matchRow, 28) || "0%"; // Kolom AC
-            const fcrMobI   = getVal(matchRow, 29) || "0%"; // Kolom AD
-            const fcrMobP   = getVal(matchRow, 30) || "0%"; // Kolom AE
-            const fcrMobTot = getVal(matchRow, 31) || "0%"; // Kolom AF
+            const fcrMobK   = getVal(matchRow, 28) || "0%"; 
+            const fcrMobI   = getVal(matchRow, 29) || "0%"; 
+            const fcrMobP   = getVal(matchRow, 30) || "0%"; 
+            const fcrMobTot = getVal(matchRow, 31) || "0%"; 
 
-            const fcrFixK   = getVal(matchRow, 32) || "0%"; // Kolom AG
-            const fcrFixI   = getVal(matchRow, 33) || "0%"; // Kolom AH
-            const fcrFixP   = getVal(matchRow, 34) || "0%"; // Kolom AI
-            const fcrFixTot = getVal(matchRow, 35) || "0%"; // Kolom AJ
-            const fcrFixRec = getVal(matchRow, 36) || "0%"; // Kolom AK
+            const fcrFixK   = getVal(matchRow, 32) || "0%"; 
+            const fcrFixI   = getVal(matchRow, 33) || "0%"; 
+            const fcrFixP   = getVal(matchRow, 34) || "0%"; 
+            const fcrFixTot = getVal(matchRow, 35) || "0%"; 
+            const fcrFixRec = getVal(matchRow, 36) || "0%"; 
 
             const fcrAllCard = document.getElementById("statFcr").innerText;
 
             container.innerHTML = `
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                     
-                    <!-- BOX 1: TOTAL INTERAKSI -->
                     <div class="bg-blue-50/50 p-4 rounded-xl border border-blue-100 space-y-2">
                         <h4 class="font-bold text-blue-700 flex items-center gap-1.5">
                             <i data-lucide="message-square" class="w-3.5 h-3.5"></i> Interaksi
@@ -785,7 +822,6 @@
                         </div>
                     </div>
 
-                    <!-- BOX 2: TOTAL TIKET KIP -->
                     <div class="bg-red-50/50 p-4 rounded-xl border border-red-100 space-y-2">
                         <h4 class="font-bold text-red-700 flex items-center gap-1.5">
                             <i data-lucide="ticket" class="w-3.5 h-3.5"></i> Tiket KIP
@@ -802,7 +838,6 @@
 
                 </div>
 
-                <!-- BOX 3: DETAIL %FCR MOBILE -->
                 <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
                     <div class="flex justify-between items-center border-b border-slate-200 pb-2">
                         <h4 class="font-bold text-slate-700">%FCR Mobile</h4>
@@ -824,7 +859,6 @@
                     </div>
                 </div>
 
-                <!-- BOX 4: DETAIL %FCR FIXED -->
                 <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
                     <div class="flex justify-between items-center border-b border-slate-200 pb-2">
                         <h4 class="font-bold text-slate-700">%FCR Fixed</h4>
@@ -850,12 +884,88 @@
                     </div>
                 </div>
 
-                <!-- BOX 5: %FCR ALL -->
                 <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-200 flex justify-between items-center text-xs">
                     <span class="font-bold text-emerald-800 flex items-center gap-1.5">
                         <i data-lucide="shield-check" class="w-4 h-4 text-emerald-600"></i> %FCR ALL
                     </span>
                     <span class="text-lg font-extrabold text-emerald-700">${fcrAllCard}</span>
+                </div>
+            `;
+
+            setTimeout(() => { lucide.createIcons(); }, 50);
+        }
+
+        // RENDER REPORT SALES (AMBIL DARI KOLOM G & H)
+        async function renderSalesReport() {
+            const container = document.getElementById("modalReportContent");
+            container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs flex justify-center items-center gap-2"><i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Memuat report Sales...</div>`;
+            setTimeout(() => { lucide.createIcons(); }, 10);
+
+            const salesReportUrl = CONFIG.MONTHLY_METRICS[selectedReportMonth]?.sales_report;
+            if (!salesReportUrl) {
+                container.innerHTML = `<div class="text-center py-6 text-red-500 text-xs">Link data Sales Report bulan ini belum tersedia.</div>`;
+                return;
+            }
+
+            const salesRows = await fetchCsvData(salesReportUrl, 0);
+            if (!salesRows || salesRows.length === 0) {
+                container.innerHTML = `<div class="text-center py-6 text-red-500 text-xs">Gagal mengunduh data Sales Report bulan ini.</div>`;
+                return;
+            }
+
+            const targetSiad = (selectedAgentForModal.siad || "").toLowerCase().trim();
+            const targetNama = (selectedAgentForModal.nama || "").toLowerCase().trim();
+
+            const matchRow = salesRows.find(r => {
+                const s = getVal(r, 1).toLowerCase().trim(); // Kolom B (SIAD)
+                const n = getVal(r, 3).toLowerCase().trim(); // Kolom D (Nama)
+                return (targetSiad !== "" && s === targetSiad) || 
+                       (targetNama !== "" && n === targetNama) ||
+                       (targetNama !== "" && n.includes(targetNama));
+            });
+
+            if (!matchRow) {
+                container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">Data agent ini tidak ditemukan pada report Sales bulan ${selectedReportMonth === "2026-09" ? "September" : "Oktober"}.</div>`;
+                return;
+            }
+
+            // EKSTRAKSI KOLOM SALES REPORT:
+            const salesMob   = getVal(matchRow, 6) || "0";  // Kolom G (Sales Mobile)
+            const salesFix   = getVal(matchRow, 7) || "0";  // Kolom H (Sales Fixed)
+            
+            const pctMob     = getVal(matchRow, 10) || "0%"; // Kolom K (% Sales Mobile)
+            const pctFix     = getVal(matchRow, 11) || "0%"; // Kolom L (% Sales Fixed)
+
+            container.innerHTML = `
+                <!-- BOX: SALES MOBILE & FIXED -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                        <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+                            <h4 class="font-bold text-blue-700 flex items-center gap-1.5">
+                                <i data-lucide="smartphone" class="w-3.5 h-3.5 text-blue-600"></i> Sales Mobile
+                            </h4>
+                            <span class="font-bold text-lg text-slate-800">${salesMob}</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-white p-2.5 rounded-lg border border-slate-100">
+                            <span class="text-slate-500 font-medium">% Sales Mobile:</span>
+                            <span class="font-extrabold text-blue-600 text-sm">${pctMob}</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                        <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+                            <h4 class="font-bold text-red-700 flex items-center gap-1.5">
+                                <i data-lucide="wifi" class="w-3.5 h-3.5 text-red-600"></i> Sales Fixed
+                            </h4>
+                            <span class="font-bold text-lg text-slate-800">${salesFix}</span>
+                        </div>
+                        <div class="flex justify-between items-center bg-white p-2.5 rounded-lg border border-slate-100">
+                            <span class="text-slate-500 font-medium">% Sales Fixed:</span>
+                            <span class="font-extrabold text-red-600 text-sm">${pctFix}</span>
+                        </div>
+                    </div>
+
                 </div>
             `;
 
