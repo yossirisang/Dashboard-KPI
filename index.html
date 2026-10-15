@@ -52,6 +52,7 @@
             ticket: { mobile: [], fixed: [], labels: [] }
         };
         let mainChart = null; 
+        let ahtChart = null; // Instance Chart untuk Grafik AHT Harian Agent
         let selectedAgentForModal = null;
         let selectedReportMonth = "2026-10";
         let activeModalTab = "summary"; // 'summary' atau 'aht'
@@ -354,7 +355,7 @@
             return (row && row[colIdx] !== undefined) ? row[colIdx].toString().trim() : "";
         }
 
-        // POIN 1: FUNGSI FORMAT DURASI AHT (DESIMAL EXCEL / DETIK -> FORMAT DURASI WAKTU hh:mm:ss / mm:ss)
+        // FORMAT TERBILANG WAKTU (DESIMAL EXCEL / DETIK / TEKS -> STR hh:mm:ss ATAU mm:ss)
         function formatAhtValue(rawVal) {
             if (!rawVal || rawVal === "" || rawVal === "-") return "-";
             
@@ -362,7 +363,6 @@
             let num = parseFloat(cleanStr);
 
             if (!isNaN(num)) {
-                // Kasus A: Desimal Excel/Sheets (misal: 0.0026 -> pecahan hari 24 jam)
                 if (num < 1 && num > 0) {
                     let totalSeconds = Math.round(num * 86400);
                     let h = Math.floor(totalSeconds / 3600);
@@ -371,12 +371,8 @@
 
                     let mm = String(m).padStart(2, '0');
                     let ss = String(s).padStart(2, '0');
-                    if (h > 0) {
-                        return `${String(h).padStart(2, '0')}:${mm}:${ss}`;
-                    }
-                    return `${mm}:${ss}`;
+                    return (h > 0) ? `${String(h).padStart(2, '0')}:${mm}:${ss}` : `${mm}:${ss}`;
                 }
-                // Kasus B: Angka detik murni (misal: 225 detik)
                 if (num >= 1) {
                     let totalSeconds = Math.round(num);
                     let h = Math.floor(totalSeconds / 3600);
@@ -385,15 +381,30 @@
 
                     let mm = String(m).padStart(2, '0');
                     let ss = String(s).padStart(2, '0');
-                    if (h > 0) {
-                        return `${String(h).padStart(2, '0')}:${mm}:${ss}`;
-                    }
-                    return `${mm}:${ss}`;
+                    return (h > 0) ? `${String(h).padStart(2, '0')}:${mm}:${ss}` : `${mm}:${ss}`;
                 }
             }
-
-            // Kasus C: Teks durasi biasa (misal: 00:03:45 / 03:45)
             return rawVal;
+        }
+
+        // KONVERSI NILAI AHT KE TOTAL DETIK (UNTUK PLOTTING GRAFIK CHART.JS)
+        function parseAhtToSeconds(rawVal) {
+            if (!rawVal || rawVal === "" || rawVal === "-") return 0;
+
+            let cleanStr = rawVal.replace(',', '.').trim();
+            let num = parseFloat(cleanStr);
+
+            if (!isNaN(num)) {
+                if (num < 1 && num > 0) return Math.round(num * 86400); // Desimal Excel -> Detik
+                if (num >= 1) return Math.round(num); // Angka Detik
+            }
+
+            // Jika berupa string format hh:mm:ss atau mm:ss
+            let parts = rawVal.split(':').map(p => parseInt(p, 10) || 0);
+            if (parts.length === 3) return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
+            if (parts.length === 2) return (parts[0] * 60) + parts[1];
+
+            return 0;
         }
 
         function handleLogin(e) {
@@ -740,6 +751,10 @@
         }
 
         function closeReportModal() {
+            if (ahtChart) {
+                ahtChart.destroy();
+                ahtChart = null;
+            }
             document.getElementById("reportModal").classList.add("hidden");
         }
 
@@ -782,6 +797,11 @@
         }
 
         async function loadActiveModalContent() {
+            if (ahtChart) {
+                ahtChart.destroy();
+                ahtChart = null;
+            }
+
             if (activeModalTab === "summary") {
                 await loadAllReportsInOneView();
             } else {
@@ -1019,7 +1039,7 @@
             setTimeout(() => { lucide.createIcons(); }, 50);
         }
 
-        // LOAD TAB 2: REPORT AHT HARIAN (DINAMIS 30 ATAU 31 HARI BERDASARKAN BULAN & DENGAN FORMAT DURASI)
+        // LOAD TAB 2: REPORT AHT HARIAN + GRAFIK TREN HARIAN
         async function loadAhtReportView() {
             const container = document.getElementById("modalReportContent");
             container.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs flex justify-center items-center gap-2"><i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Memuat report AHT...</div>`;
@@ -1057,17 +1077,25 @@
             const rawTotalAht = getVal(matchRow, 37);
             const totalAhtFormatted = formatAhtValue(rawTotalAht);
 
-            // POIN 2: HITUNG JUMLAH HARI AKTUAL DALAM BULAN YANG DIPILIH
+            // HITUNG JUMLAH HARI AKTUAL DALAM BULAN YANG DIPILIH
             const [year, month] = selectedReportMonth.split("-").map(Number);
-            const daysInSelectedMonth = new Date(year, month, 0).getDate(); // 30 untuk Sep 2026, 31 untuk Okt 2026
+            const daysInSelectedMonth = new Date(year, month, 0).getDate();
 
-            // Buat Grid Harian untuk Tanggal 1 s/d daysInSelectedMonth
             let dailyGridHtml = "";
+            let chartLabels = [];
+            let chartSecondsData = [];
+            let chartFormattedData = [];
+
             for (let d = 1; d <= daysInSelectedMonth; d++) {
                 const colIdx = 5 + d; // Tanggal 1 -> Idx 6 (Kolom G)
                 const rawVal = getVal(matchRow, colIdx);
                 const formattedVal = formatAhtValue(rawVal);
+                const secondsVal = parseAhtToSeconds(rawVal);
                 
+                chartLabels.push(`Tgl ${d}`);
+                chartSecondsData.push(secondsVal);
+                chartFormattedData.push(formattedVal);
+
                 dailyGridHtml += `
                     <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-center hover:border-red-200 transition">
                         <span class="text-[10px] text-slate-400 font-bold block uppercase mb-0.5">TGL ${d}</span>
@@ -1079,7 +1107,7 @@
             const monthNameText = (selectedReportMonth === "2026-09") ? "September 2026 (30 Hari)" : "Oktober 2026 (31 Hari)";
 
             container.innerHTML = `
-                <div class="space-y-4">
+                <div class="space-y-5">
                     <!-- HEADER METRIC TOTAL -->
                     <div class="bg-red-50 p-4 rounded-xl border border-red-200 flex justify-between items-center text-xs">
                         <div class="flex items-center gap-2">
@@ -1092,6 +1120,19 @@
                             </div>
                         </div>
                         <span class="text-xl font-black text-red-600 bg-white px-3.5 py-1.5 rounded-lg border border-red-100 shadow-sm">${totalAhtFormatted}</span>
+                    </div>
+
+                    <!-- GRAFIK TREN AHT HARIAN -->
+                    <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-2">
+                        <div class="flex justify-between items-center">
+                            <h4 class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                                <i data-lucide="line-chart" class="w-3.5 h-3.5 text-red-600"></i> Grafik Tren AHT Harian
+                            </h4>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase">Waktu (Detik)</span>
+                        </div>
+                        <div class="relative h-48 w-full">
+                            <canvas id="ahtChartCanvas"></canvas>
+                        </div>
                     </div>
 
                     <!-- GRID MATRIX HARIAN TANGGAL DINAMIS -->
@@ -1109,7 +1150,77 @@
                 </div>
             `;
 
-            setTimeout(() => { lucide.createIcons(); }, 50);
+            setTimeout(() => { 
+                lucide.createIcons();
+                renderAhtChart(chartLabels, chartSecondsData, chartFormattedData);
+            }, 50);
+        }
+
+        // RENDER GRAFIK TREN AHT HARIAN DENGAN CHART.JS
+        function renderAhtChart(labels, secondsData, formattedData) {
+            const canvasElem = document.getElementById("ahtChartCanvas");
+            if (!canvasElem) return;
+
+            const ctx = canvasElem.getContext("2d");
+
+            if (ahtChart) {
+                ahtChart.destroy();
+            }
+
+            ahtChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'AHT (Detik)',
+                        data: secondsData,
+                        borderColor: '#dc2626',
+                        backgroundColor: 'rgba(220, 38, 38, 0.08)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#dc2626',
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: '#1e293b',
+                            titleFont: { size: 11, weight: 'bold' },
+                            bodyFont: { size: 11 },
+                            callbacks: {
+                                label: function(context) {
+                                    const idx = context.dataIndex;
+                                    const formatted = formattedData[idx] || "-";
+                                    return `Durasi AHT: ${formatted} (${context.raw}s)`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { font: { size: 10 } }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                font: { size: 10 },
+                                callback: function(value) {
+                                    return value + 's';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
 
         function switchChartTab(type) {
