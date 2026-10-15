@@ -10,6 +10,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
     <!-- Chart.js untuk Grafik Line Chart -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen">
 
@@ -70,7 +72,7 @@
                 <div id="loginError" class="hidden text-red-500 text-xs text-center font-semibold bg-red-50 p-2.5 rounded-lg border border-red-200"></div>
 
                 <button type="submit" id="btnLogin" 
-                    class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-xl shadow-lg shadow-red-200 transition duration-200 flex justify-center items-center">
+                    class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-xl shadow-lg shadow-red-200 transition duration-200 flex justify-center items-center gap-2">
                     <span>Masuk ke Dashboard</span>
                 </button>
             </form>
@@ -93,7 +95,8 @@
 
             <div class="flex items-center gap-4 mt-3 sm:mt-0 flex-wrap">
                 <!-- Datepicker Rentang Tanggal -->
-                <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs">
+                <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs text-slate-600">
+                    <i data-lucide="calendar" class="w-4 h-4 text-slate-400"></i>
                     <span class="font-semibold text-slate-500">Periode:</span>
                     <input type="date" id="startDate" onchange="loadDashboardData()" class="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer">
                     <span class="text-slate-400 font-bold">s/d</span>
@@ -102,13 +105,15 @@
 
                 <!-- Info User Login -->
                 <div class="text-right pl-3 border-l border-slate-200">
-                    <p id="userDisplayName" class="text-sm font-bold text-slate-800">-</p>
+                    <p id="userDisplayName" class="text-sm font-bold text-slate-800 flex items-center justify-end gap-1.5">
+                        <span>-</span>
+                    </p>
                     <p id="userRole" class="text-xs text-slate-500 uppercase font-medium">-</p>
                 </div>
 
-                <!-- Tombol Logout -->
-                <button onclick="handleLogout()" class="text-xs bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 font-semibold px-3 py-2 rounded-xl transition border border-slate-200">
-                    Keluar
+                <!-- Tombol Logout Icon Minimalis -->
+                <button onclick="handleLogout()" title="Keluar dari akun" class="p-2.5 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-xl transition border border-slate-200 flex items-center justify-center">
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
                 </button>
             </div>
         </header>
@@ -120,45 +125,76 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 
                 <!-- CARD INTERAKSI -->
-                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
-                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Interaksi</p>
-                    <h3 id="statTotalInteraksi" class="text-2xl font-bold text-slate-800 mt-1">0</h3>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Interaksi</p>
+                            <div class="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+                                <i data-lucide="message-square" class="w-4 h-4"></i>
+                            </div>
+                        </div>
+                        <h3 id="statTotalInteraksi" class="text-2xl font-bold text-slate-800">0</h3>
+                    </div>
                     <p id="statInteraksiDetail" class="text-xs text-slate-400 mt-2">Mobile: 0 | Fixed: 0</p>
                 </div>
 
                 <!-- CARD TIKET -->
-                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden">
-                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Tiket</p>
-                    <h3 id="statTotalTiket" class="text-2xl font-bold text-slate-800 mt-1">0</h3>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Tiket</p>
+                            <div class="p-2 bg-slate-100 text-slate-600 rounded-xl">
+                                <i data-lucide="ticket" class="w-4 h-4"></i>
+                            </div>
+                        </div>
+                        <h3 id="statTotalTiket" class="text-2xl font-bold text-slate-800">0</h3>
+                    </div>
                     <p id="statTiketDetail" class="text-xs text-slate-400 mt-2">Mobile: 0 | Fixed: 0</p>
                 </div>
                 
                 <!-- CARD SALES -->
-                <div class="bg-white p-5 rounded-2xl border-2 border-red-500/30 shadow-sm relative overflow-hidden">
-                    <div class="flex justify-between items-start">
-                        <div>
+                <div class="bg-white p-5 rounded-2xl border-2 border-red-500/30 shadow-sm relative overflow-hidden flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
                             <p class="text-xs font-semibold text-red-600 uppercase tracking-wider">Sales (Total)</p>
-                            <h3 id="statSales" class="text-2xl font-bold text-slate-800 mt-1">0</h3>
+                            <div class="p-2 bg-red-50 text-red-600 rounded-xl">
+                                <i data-lucide="trending-up" class="w-4 h-4"></i>
+                            </div>
                         </div>
-                        <span class="text-[10px] bg-red-50 text-red-600 font-bold px-2 py-1 rounded-md">Mobile + Fixed</span>
+                        <div class="flex items-baseline justify-between">
+                            <h3 id="statSales" class="text-2xl font-bold text-slate-800">0</h3>
+                            <span class="text-[10px] bg-red-50 text-red-600 font-bold px-2 py-0.5 rounded-md">Mobile + Fixed</span>
+                        </div>
                     </div>
                     <p id="statSalesDetail" class="text-xs text-slate-400 mt-2">Mobile: 0 | Fixed: 0</p>
                 </div>
 
                 <!-- CARD FCR -->
-                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">FCR</p>
-                    <h3 id="statFcr" class="text-2xl font-bold text-slate-800 mt-1">0%</h3>
-                    <p class="text-xs text-emerald-600 font-semibold mt-1">First Contact Resolution</p>
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">FCR</p>
+                            <div class="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
+                                <i data-lucide="shield-check" class="w-4 h-4"></i>
+                            </div>
+                        </div>
+                        <h3 id="statFcr" class="text-2xl font-bold text-slate-800">0%</h3>
+                    </div>
+                    <p class="text-xs text-emerald-600 font-semibold mt-2">First Contact Resolution</p>
                 </div>
             </div>
 
             <!-- GRAFIK TREN HARIAN -->
             <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                 <div class="flex flex-wrap justify-between items-center mb-4 gap-3">
-                    <div>
-                        <h3 id="chartTitle" class="text-sm font-bold text-slate-800">Grafik Tren Penjualan Harian (Daily Sales)</h3>
-                        <p class="text-xs text-slate-400">Komparasi Per-Daily Produk Mobile (Biru) & Fixed (Merah)</p>
+                    <div class="flex items-center gap-2.5">
+                        <div class="p-2 bg-slate-100 text-slate-600 rounded-xl">
+                            <i data-lucide="bar-chart-2" class="w-4 h-4"></i>
+                        </div>
+                        <div>
+                            <h3 id="chartTitle" class="text-sm font-bold text-slate-800">Grafik Tren Penjualan Harian (Daily Sales)</h3>
+                            <p class="text-xs text-slate-400">Komparasi Per-Daily Produk Mobile (Biru) & Fixed (Merah)</p>
+                        </div>
                     </div>
 
                     <!-- TAB SWITCHER GRAFIK -->
@@ -183,8 +219,14 @@
             <!-- Data Table Container -->
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                 <div class="p-5 border-b border-slate-100 flex justify-between items-center">
-                    <h3 class="text-sm font-bold text-slate-700">Detail Pencapaian Agent</h3>
-                    <input type="text" id="searchInput" onkeyup="filterTableBySearch()" placeholder="Cari nama agent..." class="text-xs px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-red-500 w-48">
+                    <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2">
+                        <i data-lucide="users" class="w-4 h-4 text-slate-400"></i>
+                        Detail Pencapaian Agent
+                    </h3>
+                    <div class="relative">
+                        <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                        <input type="text" id="searchInput" onkeyup="filterTableBySearch()" placeholder="Cari nama agent..." class="text-xs pl-8 pr-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-red-500 w-52">
+                    </div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-xs text-slate-600">
@@ -214,6 +256,7 @@
     <!-- LOGIKA JAVASCRIPT -->
     <script>
         document.addEventListener("DOMContentLoaded", () => {
+            lucide.createIcons();
             const currentUser = JSON.parse(localStorage.getItem("active_user"));
             if (currentUser) {
                 initDefaultDates();
@@ -317,6 +360,10 @@
             document.getElementById("dashboardPage").classList.remove("hidden");
             document.getElementById("userDisplayName").innerText = user.nama;
             document.getElementById("userRole").innerText = user.role;
+            
+            // Re-render icon lucide setelah halaman ter-render
+            setTimeout(() => { lucide.createIcons(); }, 50);
+
             loadDashboardData();
         }
 
@@ -530,7 +577,6 @@
             const totInt = totals.intMob + totals.intFix;
             const totTkt = totals.tktMob + totals.tktFix;
 
-            // AKUMULASI PERHITUNGAN FCR DENGAN RUMUS: (Total Interaksi - Total Tiket) / Total Interaksi
             let fcrPercentage = 0;
             if (totInt > 0) {
                 fcrPercentage = ((totInt - totTkt) / totInt) * 100;
@@ -545,7 +591,6 @@
             document.getElementById("statTotalTiket").innerText = totTkt.toLocaleString("id-ID");
             document.getElementById("statTiketDetail").innerText = `Mobile: ${totals.tktMob.toLocaleString("id-ID")} | Fixed: ${totals.tktFix.toLocaleString("id-ID")}`;
 
-            // MENAMPILKAN HASIL FCR DI SCORECARD
             document.getElementById("statFcr").innerText = `${fcrPercentage.toFixed(2)}%`;
 
             const tbody = document.getElementById("agentTableBody");
@@ -597,7 +642,7 @@
                             label: 'Mobile',
                             data: dataObj.mobile,
                             borderColor: '#3b82f6',
-                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            backgroundColor: 'rgba(59, 130, 246, 0.08)',
                             borderWidth: 2.5,
                             tension: 0.3,
                             fill: true,
@@ -608,7 +653,7 @@
                             label: 'Fixed',
                             data: dataObj.fixed,
                             borderColor: '#ef4444',
-                            backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                            backgroundColor: 'rgba(239, 68, 68, 0.08)',
                             borderWidth: 2.5,
                             tension: 0.3,
                             fill: true,
