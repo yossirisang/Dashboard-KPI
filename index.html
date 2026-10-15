@@ -297,10 +297,10 @@
                         <i data-lucide="calendar" class="w-4 h-4 text-slate-400"></i> Pilih Bulan Report:
                     </span>
                     <div class="flex gap-2">
-                        <button id="btnModalSep" onclick="changeFcrMonth('2026-09')" class="px-3 py-1 text-xs font-bold rounded-lg transition bg-white text-red-600 shadow-sm border border-slate-200">
+                        <button id="btnModalSep" onclick="changeFcrMonth('2026-09')" class="px-3 py-1 text-xs font-bold rounded-lg transition bg-white text-slate-600 border border-slate-200 hover:bg-slate-50">
                             September
                         </button>
-                        <button id="btnModalOkt" onclick="changeFcrMonth('2026-10')" class="px-3 py-1 text-xs font-bold rounded-lg transition bg-white text-red-600 shadow-sm border border-slate-200">
+                        <button id="btnModalOkt" onclick="changeFcrMonth('2026-10')" class="px-3 py-1 text-xs font-bold rounded-lg transition bg-red-600 text-white shadow-sm">
                             Oktober
                         </button>
                     </div>
@@ -433,7 +433,7 @@
             window.location.reload();
         }
 
-        function fetchCsvData(url) {
+        function fetchCsvData(url, skipHeaderRows = 2) {
             return new Promise((resolve) => {
                 if (!url || url.startsWith("PASTE_LINK") || url === "") {
                     resolve([]);
@@ -448,7 +448,7 @@
                     header: false,
                     skipEmptyLines: true,
                     complete: function(results) {
-                        const rows = results.data.slice(2);
+                        const rows = results.data.slice(skipHeaderRows);
                         csvCache[url] = rows;
                         resolve(rows);
                     },
@@ -493,9 +493,9 @@
             for (let mKey of monthsToFetch) {
                 const metricUrls = CONFIG.MONTHLY_METRICS[mKey];
                 if (metricUrls) {
-                    metricsDataMap.sales[mKey] = await fetchCsvData(metricUrls.sales);
-                    metricsDataMap.interaksi[mKey] = await fetchCsvData(metricUrls.interaksi);
-                    metricsDataMap.ticket[mKey] = await fetchCsvData(metricUrls.ticket);
+                    metricsDataMap.sales[mKey] = await fetchCsvData(metricUrls.sales, 2);
+                    metricsDataMap.interaksi[mKey] = await fetchCsvData(metricUrls.interaksi, 2);
+                    metricsDataMap.ticket[mKey] = await fetchCsvData(metricUrls.ticket, 2);
                 }
             }
 
@@ -657,7 +657,7 @@
             document.getElementById("statInteraksiDetail").innerText = `Mobile: ${totals.intMob.toLocaleString("id-ID")} | Fixed: ${totals.intFix.toLocaleString("id-ID")}`;
 
             document.getElementById("statTotalTiket").innerText = totTkt.toLocaleString("id-ID");
-            document.getElementById("statTiketDetail").innerText = `Mobile: ${totals.tktMob.toLocaleString("id-ID")} | Fixed: ${totals.rawtktFix ? totals.tktFix.toLocaleString("id-ID") : totals.tktFix.toLocaleString("id-ID")}`;
+            document.getElementById("statTiketDetail").innerText = `Mobile: ${totals.tktMob.toLocaleString("id-ID")} | Fixed: ${totals.tktFix.toLocaleString("id-ID")}`;
 
             document.getElementById("statFcr").innerText = `${fcrPercentage.toFixed(2)}%`;
 
@@ -676,7 +676,6 @@
             document.getElementById("modalAgentSiad").innerText = `SIAD: ${agent.siad}`;
             document.getElementById("reportModal").classList.remove("hidden");
 
-            // Switcher style default
             selectedFcrMonth = "2026-10";
             updateModalMonthButtons();
 
@@ -708,7 +707,8 @@
 
         async function loadFcrReportDetail() {
             const container = document.getElementById("fcrReportContent");
-            container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">Memuat data report FCR...</div>`;
+            container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs flex justify-center items-center gap-2"><i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Memuat data report FCR...</div>`;
+            setTimeout(() => { lucide.createIcons(); }, 10);
 
             const fcrUrl = CONFIG.MONTHLY_METRICS[selectedFcrMonth]?.fcr;
             if (!fcrUrl) {
@@ -716,20 +716,25 @@
                 return;
             }
 
-            const fcrRows = await fetchCsvData(fcrUrl);
+            // Parsing FCR tanpa memotong baris teratas (skip 0 header row)
+            const fcrRows = await fetchCsvData(fcrUrl, 0);
             if (!fcrRows || fcrRows.length === 0) {
                 container.innerHTML = `<div class="text-center py-6 text-red-500 text-xs">Gagal mengunduh sheet FCR bulan ini.</div>`;
                 return;
             }
 
-            // Cari baris agen berdasarkan SIAD / Nama
-            const targetSiad = selectedAgentForModal.siad.toLowerCase();
-            const targetNama = selectedAgentForModal.nama.toLowerCase();
+            // Match Agen yang presisi & tahan pergeseran nama/SIAD
+            const targetSiad = (selectedAgentForModal.siad || "").toLowerCase().trim();
+            const targetNama = (selectedAgentForModal.nama || "").toLowerCase().trim();
 
             const matchRow = fcrRows.find(r => {
-                const s = getVal(r, 1).toLowerCase();
-                const n = getVal(r, 3).toLowerCase();
-                return (s !== "" && s === targetSiad) || (n !== "" && n === targetNama);
+                const s = getVal(r, 1).toLowerCase().trim(); // Kolom B (SIAD)
+                const n = getVal(r, 3).toLowerCase().trim(); // Kolom D (Nama)
+                
+                return (targetSiad !== "" && s === targetSiad) || 
+                       (targetNama !== "" && n === targetNama) ||
+                       (targetNama !== "" && n.includes(targetNama)) ||
+                       (targetNama !== "" && targetNama.includes(n) && n.length > 3);
             });
 
             if (!matchRow) {
@@ -756,7 +761,6 @@
             const fcrFixTot = getVal(matchRow, 35) || "0%"; // Kolom AJ
             const fcrFixRec = getVal(matchRow, 36) || "0%"; // Kolom AK
 
-            // Tampilkan %FCR ALL sesuai Scorecard
             const fcrAllCard = document.getElementById("statFcr").innerText;
 
             container.innerHTML = `
