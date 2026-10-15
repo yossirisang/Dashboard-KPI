@@ -226,8 +226,8 @@
             const endDateElem = document.getElementById("endDate");
 
             if (!startDateElem.value || !endDateElem.value) {
-                startDateElem.value = "2026-09-01";
-                endDateElem.value = "2026-09-30";
+                startDateElem.value = "2026-10-01";
+                endDateElem.value = "2026-10-31";
             }
         }
 
@@ -432,10 +432,7 @@
                     const rows = dataMapObj[dObj.mKey];
                     if (!rows) return;
 
-                    // PEMETAAN TETAP SESUAI INSTRUKSI SPESIFIK:
-                    // Mobile Tanggal 1 = Kolom G (Index 6)
                     const mobBaseIndex = 6; 
-                    // Fixed Tanggal 1 = Kolom AM (Index 38 untuk Sep) / Kolom AN (Index 39 untuk Okt)
                     const fixedBaseIndex = (dObj.daysInMonth === 30) ? 38 : 39;
 
                     rows.forEach(r => {
@@ -533,6 +530,12 @@
             const totInt = totals.intMob + totals.intFix;
             const totTkt = totals.tktMob + totals.tktFix;
 
+            // AKUMULASI PERHITUNGAN FCR DENGAN RUMUS: (Total Interaksi - Total Tiket) / Total Interaksi
+            let fcrPercentage = 0;
+            if (totInt > 0) {
+                fcrPercentage = ((totInt - totTkt) / totInt) * 100;
+            }
+
             document.getElementById("statSales").innerText = totSales.toLocaleString("id-ID");
             document.getElementById("statSalesDetail").innerText = `Mobile: ${totals.salesMob.toLocaleString("id-ID")} | Fixed: ${totals.salesFix.toLocaleString("id-ID")}`;
 
@@ -541,6 +544,9 @@
 
             document.getElementById("statTotalTiket").innerText = totTkt.toLocaleString("id-ID");
             document.getElementById("statTiketDetail").innerText = `Mobile: ${totals.tktMob.toLocaleString("id-ID")} | Fixed: ${totals.tktFix.toLocaleString("id-ID")}`;
+
+            // MENAMPILKAN HASIL FCR DI SCORECARD
+            document.getElementById("statFcr").innerText = `${fcrPercentage.toFixed(2)}%`;
 
             const tbody = document.getElementById("agentTableBody");
             tbody.innerHTML = Object.keys(agentSummary).length > 0 ? tbodyHtml : `<tr><td colspan="7" class="p-4 text-center text-slate-400">Tidak ada data ditemukan untuk tim ini.</td></tr>`;
