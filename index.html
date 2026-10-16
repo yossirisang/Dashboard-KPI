@@ -900,7 +900,7 @@
         }
 
         // =========================================================================
-        // FUNGSI EXPORT PDF KONDISI 1: REPORT AGENT (2 HALAMAN: RINGKASAN & AHT)
+        // FUNGSI EXPORT PDF AGENT (SANGAT RAPI, BEBAS BLANK SPACE & TERPOTONG)
         // =========================================================================
         async function exportAgentPdf() {
             if (!selectedAgentForModal) return;
@@ -913,16 +913,14 @@
             const dateNow = new Date().toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' });
             const currentUser = JSON.parse(localStorage.getItem("active_user"));
 
-            // Simpan posisi tab aktif pengguna
             const initialTab = activeModalTab;
 
-            // 1. Ambil Tampilan Halaman 1 (Summary)
+            // 1. Ambil HTML Halaman 1 (Ringkasan)
             await switchModalTab("summary");
             const summaryHtml = document.getElementById("modalReportContent").innerHTML;
 
-            // 2. Ambil Tampilan Halaman 2 (AHT)
+            // 2. Ambil HTML & Canvas Grafik Halaman 2 (AHT)
             await switchModalTab("aht");
-            // Tunggu sebentar agar Chart AHT ter-render sempurna
             await new Promise(r => setTimeout(r, 200));
             
             const ahtCanvas = document.getElementById("ahtChartCanvas");
@@ -932,23 +930,23 @@
             }
             const ahtHtml = document.getElementById("modalReportContent").innerHTML;
 
-            // Kembalikan ke tab awal pengguna
+            // Kembalikan ke tab pilihan pengguna
             await switchModalTab(initialTab);
 
-            // 3. Susun Konten PDF 2 Halaman
+            // 3. Susun Konten PDF tanpa min-height agar fleksibel
             const pdfContainer = document.createElement("div");
-            pdfContainer.style.width = "750px";
-            pdfContainer.style.padding = "20px";
+            pdfContainer.style.width = "720px";
+            pdfContainer.style.padding = "0px";
             pdfContainer.style.backgroundColor = "#ffffff";
             pdfContainer.style.color = "#1e293b";
             pdfContainer.style.fontFamily = "sans-serif";
 
             pdfContainer.innerHTML = `
                 <!-- HALAMAN 1: RINGKASAN -->
-                <div style="min-height: 980px; position: relative;">
-                    <div style="border-bottom: 2px solid #dc2626; padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end;">
+                <div style="page-break-after: always; box-sizing: border-box; padding-bottom: 10px;">
+                    <div style="border-bottom: 2px solid #dc2626; padding-bottom: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-end;">
                         <div>
-                            <h1 style="font-size: 16px; font-weight: bold; color: #dc2626; margin: 0;">KPI MONITORING PORTAL</h1>
+                            <h1 style="font-size: 15px; font-weight: bold; color: #dc2626; margin: 0;">KPI MONITORING PORTAL</h1>
                             <p style="font-size: 10px; color: #64748b; margin: 2px 0 0 0;">Agent Performance Evaluation Report</p>
                         </div>
                         <div style="text-align: right; font-size: 9px; color: #64748b;">
@@ -957,7 +955,7 @@
                         </div>
                     </div>
 
-                    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 14px; display: flex; justify-content: space-between; font-size: 10px;">
+                    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; margin-bottom: 10px; display: flex; justify-content: space-between; font-size: 10px;">
                         <div>
                             <p style="margin: 0 0 2px 0;">Nama Agent: <b style="color: #0f172a; font-size: 11px;">${selectedAgentForModal.nama}</b></p>
                             <p style="margin: 0;">SIAD: <b style="color: #0f172a;">${selectedAgentForModal.siad || "-"}</b></p>
@@ -968,7 +966,7 @@
                         </div>
                     </div>
 
-                    <div style="font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 10px; background: #f1f5f9; padding: 6px 10px; border-radius: 6px;">
+                    <div style="font-size: 10px; font-weight: bold; color: #334155; margin-bottom: 10px; background: #f1f5f9; padding: 5px 10px; border-radius: 6px;">
                         PAGE 1: RINGKASAN PERFORMANCE (FCR, SALES & RETENSI)
                     </div>
 
@@ -977,14 +975,11 @@
                     </div>
                 </div>
 
-                <!-- BREAKER HALAMAN PDF -->
-                <div style="page-break-before: always;"></div>
-
                 <!-- HALAMAN 2: REPORT AHT -->
-                <div style="min-height: 980px; position: relative; padding-top: 10px;">
-                    <div style="border-bottom: 2px solid #dc2626; padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end;">
+                <div style="box-sizing: border-box; padding-top: 4px;">
+                    <div style="border-bottom: 2px solid #dc2626; padding-bottom: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-end;">
                         <div>
-                            <h1 style="font-size: 16px; font-weight: bold; color: #dc2626; margin: 0;">KPI MONITORING PORTAL</h1>
+                            <h1 style="font-size: 15px; font-weight: bold; color: #dc2626; margin: 0;">KPI MONITORING PORTAL</h1>
                             <p style="font-size: 10px; color: #64748b; margin: 2px 0 0 0;">Average Handling Time (AHT) Detailed Report</p>
                         </div>
                         <div style="text-align: right; font-size: 9px; color: #64748b;">
@@ -993,7 +988,7 @@
                         </div>
                     </div>
 
-                    <div style="font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 10px; background: #f1f5f9; padding: 6px 10px; border-radius: 6px;">
+                    <div style="font-size: 10px; font-weight: bold; color: #334155; margin-bottom: 10px; background: #f1f5f9; padding: 5px 10px; border-radius: 6px;">
                         PAGE 2: AVERAGE HANDLING TIME (AHT) HARIAN
                     </div>
 
@@ -1003,20 +998,21 @@
                 </div>
             `;
 
-            // Ganti canvas interaktif pada Halaman 2 dengan gambar static PNG agar ter-render sempurna di PDF
+            // Tempelkan gambar grafik statis untuk replacing canvas
             if (ahtImgData) {
                 const canvasInPdf = pdfContainer.querySelector("#ahtChartCanvas");
                 if (canvasInPdf && canvasInPdf.parentElement) {
-                    canvasInPdf.parentElement.innerHTML = `<img src="${ahtImgData}" style="width: 100%; height: 180px; object-fit: contain;" />`;
+                    canvasInPdf.parentElement.innerHTML = `<img src="${ahtImgData}" style="width: 100%; height: 160px; object-fit: contain;" />`;
                 }
             }
 
             const opt = {
-                margin:       [8, 8, 8, 8],
+                margin:       [10, 10, 10, 10],
                 filename:     `Report (${selectedAgentForModal.nama}).pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2, useCORS: true, logging: false },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                pagebreak:    { mode: ['css', 'legacy'] }
             };
 
             html2pdf().set(opt).from(pdfContainer).save().then(() => {
@@ -1053,17 +1049,17 @@
             const tableHtml = document.getElementById("agentTableContainer").innerHTML;
 
             const printWrapper = document.createElement("div");
-            printWrapper.style.padding = "16px";
+            printWrapper.style.padding = "10px";
             printWrapper.style.fontFamily = "sans-serif";
             printWrapper.style.backgroundColor = "#ffffff";
 
             printWrapper.innerHTML = `
-                <div style="border-bottom: 2px solid #dc2626; padding-bottom: 10px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: flex-end;">
+                <div style="border-bottom: 2px solid #dc2626; padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end;">
                     <div>
-                        <h1 style="font-size: 16px; font-weight: bold; color: #dc2626; margin: 0;">REKAPITULASI PERFORMANCE TIM CALL CENTER</h1>
-                        <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Team Leader / Supervisor: <b>${targetName}</b></p>
+                        <h1 style="font-size: 15px; font-weight: bold; color: #dc2626; margin: 0;">REKAPITULASI PERFORMANCE TIM CALL CENTER</h1>
+                        <p style="font-size: 10px; color: #64748b; margin: 2px 0 0 0;">Team Leader / Supervisor: <b>${targetName}</b></p>
                     </div>
-                    <div style="text-align: right; font-size: 10px; color: #64748b;">
+                    <div style="text-align: right; font-size: 9px; color: #64748b;">
                         <p style="margin: 0;">Tanggal Cetak: <b>${dateNow}</b></p>
                         <p style="margin: 0;">Periode Rentang: <b>${startVal} s/d ${endVal}</b></p>
                     </div>
@@ -1074,7 +1070,6 @@
                 </div>
             `;
 
-            // Sembunyikan elemen yang tidak perlu di PDF
             const btnExport = printWrapper.querySelector("button");
             if (btnExport) btnExport.style.display = "none";
             const searchBox = printWrapper.querySelector("#searchInput");
@@ -1241,7 +1236,7 @@
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                        <div class="bg-blue-50/50 p-3.5 rounded-xl border border-blue-100 space-y-1.5">
+                        <div class="bg-blue-50/50 p-3 rounded-xl border border-blue-100 space-y-1">
                             <h4 class="font-bold text-blue-700 flex items-center gap-1.5">Interaksi</h4>
                             <div class="flex justify-between border-b border-blue-100/60 pb-1">
                                 <span class="text-slate-600">Total Interaksi Mobile:</span>
@@ -1257,7 +1252,7 @@
                             </div>
                         </div>
 
-                        <div class="bg-red-50/50 p-3.5 rounded-xl border border-red-100 space-y-1.5">
+                        <div class="bg-red-50/50 p-3 rounded-xl border border-red-100 space-y-1">
                             <h4 class="font-bold text-red-700 flex items-center gap-1.5">Tiket KIP</h4>
                             <div class="flex justify-between border-b border-red-100/60 pb-1">
                                 <span class="text-slate-600">Total Tiket KIP Mobile:</span>
@@ -1271,46 +1266,46 @@
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1.5">
                             <div class="flex justify-between items-center border-b border-slate-200 pb-1">
                                 <span class="font-bold text-slate-700">%FCR Mobile</span>
                                 <span class="font-bold text-blue-600">${fcrMobTot}</span>
                             </div>
-                            <div class="grid grid-cols-3 gap-1.5 pt-0.5 text-center">
-                                <div class="bg-white p-1.5 rounded-lg border border-slate-100">
+                            <div class="grid grid-cols-3 gap-1 pt-0.5 text-center">
+                                <div class="bg-white p-1 rounded-lg border border-slate-100">
                                     <span class="text-slate-400 block text-[9px]">K</span>
                                     <span class="font-bold text-slate-700">${fcrMobK}</span>
                                 </div>
-                                <div class="bg-white p-1.5 rounded-lg border border-slate-100">
+                                <div class="bg-white p-1 rounded-lg border border-slate-100">
                                     <span class="text-slate-400 block text-[9px]">I</span>
                                     <span class="font-bold text-slate-700">${fcrMobI}</span>
                                 </div>
-                                <div class="bg-white p-1.5 rounded-lg border border-slate-100">
+                                <div class="bg-white p-1 rounded-lg border border-slate-100">
                                     <span class="text-slate-400 block text-[9px]">P</span>
                                     <span class="font-bold text-slate-700">${fcrMobP}</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+                        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1.5">
                             <div class="flex justify-between items-center border-b border-slate-200 pb-1">
                                 <span class="font-bold text-slate-700">%FCR Fixed</span>
                                 <span class="font-bold text-red-600">${fcrFixTot}</span>
                             </div>
                             <div class="grid grid-cols-4 gap-1 pt-0.5 text-center">
-                                <div class="bg-white p-1.5 rounded-lg border border-slate-100">
+                                <div class="bg-white p-1 rounded-lg border border-slate-100">
                                     <span class="text-slate-400 block text-[9px]">K</span>
                                     <span class="font-bold text-slate-700">${fcrFixK}</span>
                                 </div>
-                                <div class="bg-white p-1.5 rounded-lg border border-slate-100">
+                                <div class="bg-white p-1 rounded-lg border border-slate-100">
                                     <span class="text-slate-400 block text-[9px]">I</span>
                                     <span class="font-bold text-slate-700">${fcrFixI}</span>
                                 </div>
-                                <div class="bg-white p-1.5 rounded-lg border border-slate-100">
+                                <div class="bg-white p-1 rounded-lg border border-slate-100">
                                     <span class="text-slate-400 block text-[9px]">P</span>
                                     <span class="font-bold text-slate-700">${fcrFixP}</span>
                                 </div>
-                                <div class="bg-white p-1.5 rounded-lg border border-slate-100">
+                                <div class="bg-white p-1 rounded-lg border border-slate-100">
                                     <span class="text-slate-400 block text-[9px]">Recip</span>
                                     <span class="font-bold text-slate-700">${fcrFixRec}</span>
                                 </div>
@@ -1318,42 +1313,42 @@
                         </div>
                     </div>
 
-                    <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200 flex justify-between items-center text-xs">
+                    <div class="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 flex justify-between items-center text-xs">
                         <span class="font-bold text-emerald-800 flex items-center gap-1.5">
                             <i data-lucide="shield-check" class="w-4 h-4 text-emerald-600"></i> %FCR ALL
                         </span>
-                        <span class="text-base font-extrabold text-emerald-700">${fcrAllVal}</span>
+                        <span class="text-sm font-extrabold text-emerald-700">${fcrAllVal}</span>
                     </div>
                 </div>
 
-                <div class="space-y-3 pt-2">
-                    <div class="flex items-center gap-2 text-slate-800 font-bold border-b border-slate-100 pb-2">
+                <div class="space-y-2 pt-2">
+                    <div class="flex items-center gap-2 text-slate-800 font-bold border-b border-slate-100 pb-1">
                         <i data-lucide="circle-dollar-sign" class="w-4 h-4 text-amber-600"></i>
                         <span>Report Sales</span>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                        <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
-                            <div class="flex justify-between items-center border-b border-slate-200 pb-1.5">
+                        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1">
+                            <div class="flex justify-between items-center border-b border-slate-200 pb-1">
                                 <h4 class="font-bold text-blue-700 flex items-center gap-1">
                                     <i data-lucide="smartphone" class="w-3.5 h-3.5 text-blue-600"></i> Sales Mobile
                                 </h4>
-                                <span class="font-bold text-base text-slate-800">${salesMob}</span>
+                                <span class="font-bold text-sm text-slate-800">${salesMob}</span>
                             </div>
-                            <div class="flex justify-between items-center bg-white p-2 rounded-lg border border-slate-100">
+                            <div class="flex justify-between items-center bg-white p-1.5 rounded-lg border border-slate-100">
                                 <span class="text-slate-500 font-medium">% Sales Mobile:</span>
                                 <span class="font-extrabold text-blue-600">${pctMob}</span>
                             </div>
                         </div>
 
-                        <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
-                            <div class="flex justify-between items-center border-b border-slate-200 pb-1.5">
+                        <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1">
+                            <div class="flex justify-between items-center border-b border-slate-200 pb-1">
                                 <h4 class="font-bold text-red-700 flex items-center gap-1">
                                     <i data-lucide="wifi" class="w-3.5 h-3.5 text-red-600"></i> Sales Fixed
                                 </h4>
-                                <span class="font-bold text-base text-slate-800">${salesFix}</span>
+                                <span class="font-bold text-sm text-slate-800">${salesFix}</span>
                             </div>
-                            <div class="flex justify-between items-center bg-white p-2 rounded-lg border border-slate-100">
+                            <div class="flex justify-between items-center bg-white p-1.5 rounded-lg border border-slate-100">
                                 <span class="text-slate-500 font-medium">% Sales Fixed:</span>
                                 <span class="font-extrabold text-red-600">${pctFix}</span>
                             </div>
@@ -1361,24 +1356,24 @@
                     </div>
                 </div>
 
-                <div class="space-y-3 pt-2">
-                    <div class="flex items-center gap-2 text-slate-800 font-bold border-b border-slate-100 pb-2">
+                <div class="space-y-2 pt-2">
+                    <div class="flex items-center gap-2 text-slate-800 font-bold border-b border-slate-100 pb-1">
                         <i data-lucide="user-check" class="w-4 h-4 text-purple-600"></i>
                         <span>Report Retensi</span>
                     </div>
 
                     <div class="grid grid-cols-3 gap-3 text-xs">
-                        <div class="bg-purple-50/50 p-3 rounded-xl border border-purple-100 text-center">
-                            <span class="text-slate-500 block text-[10px] font-semibold uppercase">Retensi</span>
-                            <span class="text-base font-extrabold text-purple-700 mt-0.5 block">${retensiVal}</span>
+                        <div class="bg-purple-50/50 p-2.5 rounded-xl border border-purple-100 text-center">
+                            <span class="text-slate-500 block text-[9px] font-semibold uppercase">Retensi</span>
+                            <span class="text-sm font-extrabold text-purple-700 mt-0.5 block">${retensiVal}</span>
                         </div>
-                        <div class="bg-purple-50/50 p-3 rounded-xl border border-purple-100 text-center">
-                            <span class="text-slate-500 block text-[10px] font-semibold uppercase">KIP Retensi</span>
-                            <span class="text-base font-extrabold text-purple-700 mt-0.5 block">${kipRetensiVal}</span>
+                        <div class="bg-purple-50/50 p-2.5 rounded-xl border border-purple-100 text-center">
+                            <span class="text-slate-500 block text-[9px] font-semibold uppercase">KIP Retensi</span>
+                            <span class="text-sm font-extrabold text-purple-700 mt-0.5 block">${kipRetensiVal}</span>
                         </div>
-                        <div class="bg-purple-50/50 p-3 rounded-xl border border-purple-100 text-center">
-                            <span class="text-slate-500 block text-[10px] font-semibold uppercase">% Retensi</span>
-                            <span class="text-base font-extrabold text-purple-700 mt-0.5 block">${pctRetensiVal}</span>
+                        <div class="bg-purple-50/50 p-2.5 rounded-xl border border-purple-100 text-center">
+                            <span class="text-slate-500 block text-[9px] font-semibold uppercase">% Retensi</span>
+                            <span class="text-sm font-extrabold text-purple-700 mt-0.5 block">${pctRetensiVal}</span>
                         </div>
                     </div>
                 </div>
@@ -1442,9 +1437,9 @@
                 chartFormattedData.push(formattedVal);
 
                 dailyGridHtml += `
-                    <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 text-center hover:border-red-200 transition">
-                        <span class="text-[10px] text-slate-400 font-bold block uppercase mb-0.5">TGL ${d}</span>
-                        <span class="text-xs font-extrabold text-slate-800">${formattedVal}</span>
+                    <div class="bg-slate-50 p-1.5 rounded-lg border border-slate-200 text-center">
+                        <span class="text-[9px] text-slate-400 font-bold block uppercase">TGL ${d}</span>
+                        <span class="text-[11px] font-extrabold text-slate-800">${formattedVal}</span>
                     </div>
                 `;
             }
@@ -1452,40 +1447,40 @@
             const monthNameText = (selectedReportMonth === "2026-09") ? "September 2026 (30 Hari)" : "Oktober 2026 (31 Hari)";
 
             container.innerHTML = `
-                <div class="space-y-5">
-                    <div class="bg-red-50 p-4 rounded-xl border border-red-200 flex justify-between items-center text-xs">
+                <div class="space-y-4">
+                    <div class="bg-red-50 p-3 rounded-xl border border-red-200 flex justify-between items-center text-xs">
                         <div class="flex items-center gap-2">
-                            <div class="p-2 bg-red-600 text-white rounded-lg">
+                            <div class="p-1.5 bg-red-600 text-white rounded-lg">
                                 <i data-lucide="clock" class="w-4 h-4"></i>
                             </div>
                             <div>
-                                <h4 class="font-bold text-slate-800 text-sm">Average Handling Time (AHT) Total</h4>
-                                <p class="text-slate-500 text-[11px]">Akumulasi performa AHT bulanan agen</p>
+                                <h4 class="font-bold text-slate-800 text-xs">Average Handling Time (AHT) Total</h4>
+                                <p class="text-slate-500 text-[10px]">Akumulasi performa AHT bulanan agen</p>
                             </div>
                         </div>
-                        <span class="text-xl font-black text-red-600 bg-white px-3.5 py-1.5 rounded-lg border border-red-100 shadow-sm">${totalAhtFormatted}</span>
+                        <span class="text-lg font-black text-red-600 bg-white px-3 py-1 rounded-lg border border-red-100 shadow-sm">${totalAhtFormatted}</span>
                     </div>
 
-                    <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-2">
+                    <div class="bg-white p-3 rounded-xl border border-slate-200 space-y-1">
                         <div class="flex justify-between items-center">
                             <h4 class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                                 <i data-lucide="line-chart" class="w-3.5 h-3.5 text-red-600"></i> Grafik Tren AHT Harian
                             </h4>
-                            <span class="text-[10px] font-bold text-slate-400 uppercase">Waktu (Detik)</span>
+                            <span class="text-[9px] font-bold text-slate-400 uppercase">Waktu (Detik)</span>
                         </div>
-                        <div class="relative h-48 w-full">
+                        <div class="relative h-40 w-full">
                             <canvas id="ahtChartCanvas"></canvas>
                         </div>
                     </div>
 
                     <div>
-                        <div class="flex justify-between items-center mb-2">
+                        <div class="flex justify-between items-center mb-1.5">
                             <h4 class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                                 <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i> Rincian AHT Harian
                             </h4>
-                            <span class="text-[11px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">${monthNameText}</span>
+                            <span class="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">${monthNameText}</span>
                         </div>
-                        <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-7 gap-2">
+                        <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-7 gap-1.5">
                             ${dailyGridHtml}
                         </div>
                     </div>
@@ -1520,9 +1515,9 @@
                         borderWidth: 2,
                         tension: 0.3,
                         fill: true,
-                        pointRadius: 3,
+                        pointRadius: 2.5,
                         pointBackgroundColor: '#dc2626',
-                        pointHoverRadius: 6
+                        pointHoverRadius: 5
                     }]
                 },
                 options: {
@@ -1535,8 +1530,8 @@
                             mode: 'index',
                             intersect: false,
                             backgroundColor: '#1e293b',
-                            titleFont: { size: 11, weight: 'bold' },
-                            bodyFont: { size: 11 },
+                            titleFont: { size: 10, weight: 'bold' },
+                            bodyFont: { size: 10 },
                             callbacks: {
                                 label: function(context) {
                                     const idx = context.dataIndex;
@@ -1549,12 +1544,12 @@
                     scales: {
                         x: {
                             grid: { display: false },
-                            ticks: { font: { size: 10 } }
+                            ticks: { font: { size: 9 } }
                         },
                         y: {
                             beginAtZero: true,
                             ticks: {
-                                font: { size: 10 },
+                                font: { size: 9 },
                                 callback: function(value) {
                                     return value + 's';
                                 }
