@@ -900,7 +900,7 @@
         }
 
         // =========================================================================
-        // FUNGSI EXPORT PDF AGENT (SANGAT RAPI, BEBAS BLANK SPACE & TERPOTONG)
+        // FUNGSI EXPORT PDF AGENT (SANGAT PRESISI & TERTATA PERFEKT A4)
         // =========================================================================
         async function exportAgentPdf() {
             if (!selectedAgentForModal) return;
@@ -930,12 +930,13 @@
             }
             const ahtHtml = document.getElementById("modalReportContent").innerHTML;
 
-            // Kembalikan ke tab pilihan pengguna
+            // Kembalikan ke tab awal
             await switchModalTab(initialTab);
 
-            // 3. Susun Konten PDF tanpa min-height agar fleksibel
+            // 3. Susun Konten PDF dengan LEBAR 100% (Responsive Sesuai Kertas A4)
             const pdfContainer = document.createElement("div");
-            pdfContainer.style.width = "720px";
+            pdfContainer.style.width = "100%";
+            pdfContainer.style.boxSizing = "border-box";
             pdfContainer.style.padding = "0px";
             pdfContainer.style.backgroundColor = "#ffffff";
             pdfContainer.style.color = "#1e293b";
@@ -943,8 +944,8 @@
 
             pdfContainer.innerHTML = `
                 <!-- HALAMAN 1: RINGKASAN -->
-                <div style="page-break-after: always; box-sizing: border-box; padding-bottom: 10px;">
-                    <div style="border-bottom: 2px solid #dc2626; padding-bottom: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-end;">
+                <div style="page-break-after: always; box-sizing: border-box; width: 100%; padding-bottom: 5px;">
+                    <div style="border-bottom: 2px solid #dc2626; padding-bottom: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: flex-end;">
                         <div>
                             <h1 style="font-size: 15px; font-weight: bold; color: #dc2626; margin: 0;">KPI MONITORING PORTAL</h1>
                             <p style="font-size: 10px; color: #64748b; margin: 2px 0 0 0;">Agent Performance Evaluation Report</p>
@@ -955,7 +956,7 @@
                         </div>
                     </div>
 
-                    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; margin-bottom: 10px; display: flex; justify-content: space-between; font-size: 10px;">
+                    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 10px; margin-bottom: 8px; display: flex; justify-content: space-between; font-size: 10px;">
                         <div>
                             <p style="margin: 0 0 2px 0;">Nama Agent: <b style="color: #0f172a; font-size: 11px;">${selectedAgentForModal.nama}</b></p>
                             <p style="margin: 0;">SIAD: <b style="color: #0f172a;">${selectedAgentForModal.siad || "-"}</b></p>
@@ -966,7 +967,7 @@
                         </div>
                     </div>
 
-                    <div style="font-size: 10px; font-weight: bold; color: #334155; margin-bottom: 10px; background: #f1f5f9; padding: 5px 10px; border-radius: 6px;">
+                    <div style="font-size: 10px; font-weight: bold; color: #334155; margin-bottom: 8px; background: #f1f5f9; padding: 4px 8px; border-radius: 6px;">
                         PAGE 1: RINGKASAN PERFORMANCE (FCR, SALES & RETENSI)
                     </div>
 
@@ -976,8 +977,8 @@
                 </div>
 
                 <!-- HALAMAN 2: REPORT AHT -->
-                <div style="box-sizing: border-box; padding-top: 4px;">
-                    <div style="border-bottom: 2px solid #dc2626; padding-bottom: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-end;">
+                <div style="box-sizing: border-box; width: 100%; padding-top: 2px;">
+                    <div style="border-bottom: 2px solid #dc2626; padding-bottom: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: flex-end;">
                         <div>
                             <h1 style="font-size: 15px; font-weight: bold; color: #dc2626; margin: 0;">KPI MONITORING PORTAL</h1>
                             <p style="font-size: 10px; color: #64748b; margin: 2px 0 0 0;">Average Handling Time (AHT) Detailed Report</p>
@@ -988,7 +989,7 @@
                         </div>
                     </div>
 
-                    <div style="font-size: 10px; font-weight: bold; color: #334155; margin-bottom: 10px; background: #f1f5f9; padding: 5px 10px; border-radius: 6px;">
+                    <div style="font-size: 10px; font-weight: bold; color: #334155; margin-bottom: 8px; background: #f1f5f9; padding: 4px 8px; border-radius: 6px;">
                         PAGE 2: AVERAGE HANDLING TIME (AHT) HARIAN
                     </div>
 
@@ -1002,12 +1003,12 @@
             if (ahtImgData) {
                 const canvasInPdf = pdfContainer.querySelector("#ahtChartCanvas");
                 if (canvasInPdf && canvasInPdf.parentElement) {
-                    canvasInPdf.parentElement.innerHTML = `<img src="${ahtImgData}" style="width: 100%; height: 160px; object-fit: contain;" />`;
+                    canvasInPdf.parentElement.innerHTML = `<img src="${ahtImgData}" style="width: 100%; height: 150px; object-fit: contain;" />`;
                 }
             }
 
             const opt = {
-                margin:       [10, 10, 10, 10],
+                margin:       [6, 6, 6, 6],
                 filename:     `Report (${selectedAgentForModal.nama}).pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2, useCORS: true, logging: false },
@@ -1052,6 +1053,8 @@
             printWrapper.style.padding = "10px";
             printWrapper.style.fontFamily = "sans-serif";
             printWrapper.style.backgroundColor = "#ffffff";
+            printWrapper.style.width = "100%";
+            printWrapper.style.boxSizing = "border-box";
 
             printWrapper.innerHTML = `
                 <div style="border-bottom: 2px solid #dc2626; padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end;">
@@ -1078,7 +1081,7 @@
             if (pagination) pagination.style.display = "none";
 
             const opt = {
-                margin:       [8, 8, 8, 8],
+                margin:       [6, 6, 6, 6],
                 filename:     `Report Tim (${targetName}).pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2, useCORS: true },
