@@ -12,6 +12,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Lucide Icons CDN -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- html2pdf.js untuk Export ke PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans min-h-screen">
 
@@ -227,7 +229,7 @@
                     </div>
 
                     <div class="flex items-center gap-2.5 flex-wrap">
-                        <!-- DROPDOWN FILTER KHUSUS ADMIN (RINGKAS & RAPI) -->
+                        <!-- DROPDOWN FILTER KHUSUS ADMIN -->
                         <div id="adminFilterContainer" class="hidden flex items-center gap-2">
                             <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-xl text-xs">
                                 <i data-lucide="user-check" class="w-3.5 h-3.5 text-slate-400 flex-shrink-0"></i>
@@ -267,15 +269,23 @@
             </div>
 
             <!-- Data Table Container -->
-            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div class="p-5 border-b border-slate-100 flex justify-between items-center">
+            <div id="agentTableContainer" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="p-5 border-b border-slate-100 flex justify-between items-center flex-wrap gap-3">
                     <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2">
                         <i data-lucide="users" class="w-4 h-4 text-slate-400"></i>
                         Detail Pencapaian Agent
                     </h3>
-                    <div class="relative">
-                        <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
-                        <input type="text" id="searchInput" onkeyup="filterTableBySearch()" placeholder="Cari nama agent..." class="text-xs pl-8 pr-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-red-500 w-52">
+                    <div class="flex items-center gap-2">
+                        <div class="relative">
+                            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
+                            <input type="text" id="searchInput" onkeyup="filterTableBySearch()" placeholder="Cari nama agent..." class="text-xs pl-8 pr-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-red-500 w-48">
+                        </div>
+                        
+                        <!-- TOMBOL EXPORT TIM PDF -->
+                        <button onclick="exportTeamPdf()" class="px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition shadow-sm">
+                            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                            <span>Export Tim PDF</span>
+                        </button>
                     </div>
                 </div>
                 <div class="overflow-x-auto">
@@ -300,7 +310,7 @@
                     </table>
                 </div>
 
-                <!-- FOOTER PAGINATION (MAX 20 AGENT PER HALAMAN) -->
+                <!-- FOOTER PAGINATION -->
                 <div id="paginationFooter" class="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center text-xs">
                     <span id="pageInfoText" class="text-slate-500 font-medium">Menampilkan 0 dari 0 Agent</span>
                     <div class="flex items-center gap-1.5">
@@ -353,6 +363,12 @@
                         </button>
                     </div>
 
+                    <!-- TOMBOL DOWNLOAD PDF INDIVIDUAL -->
+                    <button onclick="exportAgentPdf()" title="Download PDF Report Agent" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs flex items-center gap-1 transition shadow-sm">
+                        <i data-lucide="file-down" class="w-3.5 h-3.5"></i>
+                        <span>Download PDF</span>
+                    </button>
+
                     <button onclick="closeReportModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition">
                         <i data-lucide="x" class="w-5 h-5"></i>
                     </button>
@@ -360,7 +376,7 @@
             </div>
 
             <!-- Modal Content Area -->
-            <div class="p-6">
+            <div class="p-6" id="modalPrintArea">
                 <div id="modalReportContent">
                     <div class="text-center py-6 text-slate-400 text-xs">Memuat data report...</div>
                 </div>
@@ -881,6 +897,52 @@
         function filterTableBySearch() {
             currentPage = 1;
             renderPaginatedTable();
+        }
+
+        // FUNGSI EXPORT PDF KONDISI 1: REPORT AGENT
+        function exportAgentPdf() {
+            const element = document.getElementById("modalPrintArea");
+            const agentName = selectedAgentForModal ? selectedAgentForModal.nama : "Agent";
+
+            const opt = {
+                margin:       [10, 10, 10, 10],
+                filename:     `Report (${agentName}).pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            };
+
+            html2pdf().set(opt).from(element).save();
+        }
+
+        // FUNGSI EXPORT PDF KONDISI 2: REPORT TIM
+        function exportTeamPdf() {
+            const currentUser = JSON.parse(localStorage.getItem("active_user"));
+            const adminTlSelect = document.getElementById("filterTlSelect");
+            const adminSpvSelect = document.getElementById("filterSpvSelect");
+
+            let targetName = currentUser ? currentUser.nama : "Tim";
+
+            // Jika role admin, sesuaikan nama dengan filter TL/SPV yang dipilih
+            if (currentUser && currentUser.role.includes("ADMIN")) {
+                if (adminTlSelect && adminTlSelect.value) {
+                    targetName = adminTlSelect.value;
+                } else if (adminSpvSelect && adminSpvSelect.value) {
+                    targetName = adminSpvSelect.value;
+                }
+            }
+
+            const element = document.getElementById("agentTableContainer");
+
+            const opt = {
+                margin:       [10, 10, 10, 10],
+                filename:     `Report Tim (${targetName}).pdf`,
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
+            };
+
+            html2pdf().set(opt).from(element).save();
         }
 
         async function openReportModal(agent) {
