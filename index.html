@@ -1,348 +1,467 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KPI Call Center - Dashboard</title>
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- PapaParse untuk parsing CSV Google Sheets -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
-    <!-- Chart.js untuk Grafik Line Chart -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Lucide Icons CDN -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- html2pdf.js untuk Export ke PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-</head>
-<body class="bg-slate-100 text-slate-800 font-sans min-h-screen">
+// Modal Pilihan Bulan PDF Tim
+function openTeamExportModal() {
+    document.getElementById("teamExportModal").classList.remove("hidden");
+    selectTeamExportMonth("2026-10");
+}
 
-    <!-- 1. HALAMAN LOGIN -->
-    <div id="loginPage" class="flex items-center justify-center min-h-screen p-4">
-        <div class="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border border-slate-200">
-            <div class="text-center mb-6">
-                <div class="w-14 h-14 bg-red-600 text-white rounded-2xl flex items-center justify-center mx-auto mb-3 text-2xl font-bold shadow-lg shadow-red-200">
-                    CC
+function closeTeamExportModal() {
+    document.getElementById("teamExportModal").classList.add("hidden");
+}
+
+function selectTeamExportMonth(mKey) {
+    selectedTeamMonth = mKey;
+    const btnSep = document.getElementById("btnTeamMonthSep");
+    const btnOkt = document.getElementById("btnTeamMonthOkt");
+
+    if (mKey === "2026-09") {
+        btnSep.className = "p-3 border-2 border-red-600 bg-red-50 text-red-600 rounded-xl font-bold text-xs transition text-center shadow-sm";
+        btnOkt.className = "p-3 border-2 border-slate-200 rounded-xl font-bold text-xs text-slate-700 hover:border-red-500 transition text-center";
+    } else {
+        btnOkt.className = "p-3 border-2 border-red-600 bg-red-50 text-red-600 rounded-xl font-bold text-xs transition text-center shadow-sm";
+        btnSep.className = "p-3 border-2 border-slate-200 rounded-xl font-bold text-xs text-slate-700 hover:border-red-500 transition text-center";
+    }
+}
+
+// Proses Export PDF Tim dengan Kontrol Halaman Pasti (Page 1 & Page 2 Strict)
+async function processTeamPdfExport() {
+    if (!filteredAgentList || filteredAgentList.length === 0) {
+        alert("Tidak ada data agen untuk di-export.");
+        return;
+    }
+
+    const btnExport = document.getElementById("btnStartTeamExport");
+    const statusText = document.getElementById("teamExportStatusText");
+
+    btnExport.disabled = true;
+    btnExport.innerHTML = `<span>Memproses Report...</span>`;
+
+    const currentUser = JSON.parse(localStorage.getItem("active_user"));
+    const monthText = (selectedTeamMonth === "2026-09") ? "September 2026" : "Oktober 2026";
+    const dateNow = new Date().toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' });
+    
+    const tlName = currentUser ? (currentUser.tl || currentUser.nama || "Admin") : "Team";
+    const customFileName = `Laporan Tim ${tlName} (${monthText}).pdf`;
+
+    const monthUrls = CONFIG.MONTHLY_METRICS[selectedTeamMonth];
+    if (!monthUrls) {
+        alert("Link data bulan ini tidak ditemukan.");
+        btnExport.disabled = false;
+        btnExport.innerHTML = `<i data-lucide="download" class="w-4 h-4"></i><span>Download Report</span>`;
+        lucide.createIcons();
+        return;
+    }
+
+    statusText.innerText = "Mengunduh seluruh data report dari Google Sheets...";
+
+    const [fcrRows, salesRows, retensiRows, ahtRows] = await Promise.all([
+        fetchCsvData(monthUrls.fcr, 0),
+        fetchCsvData(monthUrls.sales_report, 0),
+        fetchCsvData(monthUrls.retensi_report, 0),
+        fetchCsvData(monthUrls.aht_report, 0)
+    ]);
+
+    const masterPdfContainer = document.createElement("div");
+    masterPdfContainer.style.width = "680px";
+    masterPdfContainer.style.margin = "0 auto";
+    masterPdfContainer.style.backgroundColor = "#ffffff";
+    masterPdfContainer.style.color = "#1e293b";
+    masterPdfContainer.style.fontFamily = "sans-serif";
+
+    const totalAgents = filteredAgentList.length;
+
+    for (let i = 0; i < totalAgents; i++) {
+        const ag = filteredAgentList[i];
+        statusText.innerText = `Menyusun dokumen PDF agen (${i + 1}/${totalAgents}): ${ag.nama}...`;
+
+        const targetSiad = (ag.siad || "").toLowerCase().trim();
+        const targetNama = (ag.nama || "").toLowerCase().trim();
+
+        const findAgentRow = (rows) => {
+            if (!rows || rows.length === 0) return null;
+            return rows.find(r => {
+                const s = getVal(r, 1).toLowerCase().trim();
+                const n = getVal(r, 3).toLowerCase().trim();
+                return (targetSiad !== "" && s === targetSiad) || 
+                       (targetNama !== "" && n === targetNama) ||
+                       (targetNama !== "" && n.includes(targetNama));
+            });
+        };
+
+        const fcrMatch = findAgentRow(fcrRows);
+        const salesMatch = findAgentRow(salesRows);
+        const retensiMatch = findAgentRow(retensiRows);
+        const ahtMatch = findAgentRow(ahtRows);
+
+        const intMobTot = fcrMatch ? getVal(fcrMatch, 11) || "0" : "0";  
+        const intFixTot = fcrMatch ? getVal(fcrMatch, 17) || "0" : "0";  
+        const intRecip  = fcrMatch ? getVal(fcrMatch, 18) || "0" : "0";  
+        const tktMobTot = fcrMatch ? getVal(fcrMatch, 22) || "0" : "0";  
+        const tktFixTot = fcrMatch ? getVal(fcrMatch, 26) || "0" : "0";  
+
+        const fcrMobK   = fcrMatch ? getVal(fcrMatch, 28) || "0%" : "0%"; 
+        const fcrMobI   = fcrMatch ? getVal(fcrMatch, 29) || "0%" : "0%"; 
+        const fcrMobP   = fcrMatch ? getVal(fcrMatch, 30) || "0%" : "0%"; 
+        const fcrMobTot = fcrMatch ? getVal(fcrMatch, 31) || "0%" : "0%"; 
+
+        const fcrFixK   = fcrMatch ? getVal(fcrMatch, 32) || "0%" : "0%"; 
+        const fcrFixI   = fcrMatch ? getVal(fcrMatch, 33) || "0%" : "0%"; 
+        const fcrFixP   = fcrMatch ? getVal(fcrMatch, 34) || "0%" : "0%"; 
+        const fcrFixTot = fcrMatch ? getVal(fcrMatch, 35) || "0%" : "0%"; 
+        const fcrFixRec = fcrMatch ? getVal(fcrMatch, 36) || "0%" : "0%"; 
+
+        const fcrAllVal = fcrMatch ? getVal(fcrMatch, 37) || "0%" : "0%";
+
+        const salesMob = salesMatch ? getVal(salesMatch, 6) || "0" : "0";  
+        const salesFix = salesMatch ? getVal(salesMatch, 7) || "0" : "0";  
+        const pctMob   = salesMatch ? getVal(salesMatch, 10) || "0%" : "0%"; 
+        const pctFix   = salesMatch ? getVal(salesMatch, 11) || "0%" : "0%"; 
+
+        const retensiVal    = retensiMatch ? getVal(retensiMatch, 6) || "0" : "0";  
+        const kipRetensiVal = retensiMatch ? getVal(retensiMatch, 7) || "0" : "0";  
+        const pctRetensiVal = retensiMatch ? getVal(retensiMatch, 8) || "0%" : "0%"; 
+
+        const rawTotalAht = ahtMatch ? getVal(ahtMatch, 37) : "-";
+        const totalAhtFormatted = formatAhtValue(rawTotalAht);
+
+        const [year, month] = selectedTeamMonth.split("-").map(Number);
+        const daysInSelectedMonth = new Date(year, month, 0).getDate();
+
+        let dailyGridHtml = "";
+        let chartLabels = [];
+        let chartSecondsData = [];
+
+        for (let d = 1; d <= daysInSelectedMonth; d++) {
+            const colIdx = 5 + d;
+            const rawVal = ahtMatch ? getVal(ahtMatch, colIdx) : "";
+            const formattedVal = formatAhtValue(rawVal);
+            const secondsVal = parseAhtToSeconds(rawVal);
+
+            chartLabels.push(`Tgl ${d}`);
+            chartSecondsData.push(secondsVal);
+
+            dailyGridHtml += `
+                <div style="background-color: #f8fafc; padding: 4px; border-radius: 4px; border: 1px solid #e2e8f0; text-align: center;">
+                    <span style="font-size: 8px; color: #94a3b8; font-weight: bold; display: block;">TGL ${d}</span>
+                    <span style="font-size: 10px; font-weight: 800; color: #0f172a;">${formattedVal}</span>
                 </div>
-                <h2 class="text-2xl font-bold text-slate-800">KPI Portal Call Center</h2>
-                <p class="text-sm text-slate-500 mt-1">Silakan masuk menggunakan akun Anda</p>
-            </div>
+            `;
+        }
 
-            <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+        const tempCanvas = document.createElement("canvas");
+        tempCanvas.width = 680;
+        tempCanvas.height = 120;
+        
+        const tempChart = new Chart(tempCanvas.getContext("2d"), {
+            type: 'line',
+            data: {
+                labels: chartLabels,
+                datasets: [{
+                    data: chartSecondsData,
+                    borderColor: '#dc2626',
+                    backgroundColor: 'rgba(220, 38, 38, 0.08)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true,
+                    pointRadius: 2
+                }]
+            },
+            options: { responsive: false, animation: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { font: { size: 8 } } }, y: { beginAtZero: true, ticks: { font: { size: 8 } } } } }
+        });
+
+        const chartImgData = tempCanvas.toDataURL("image/png");
+        tempChart.destroy();
+
+        const agentBlock = document.createElement("div");
+        agentBlock.innerHTML = `
+            <!-- HALAMAN 1: RINGKASAN PERFORMANCE (STRICT PAGE) -->
+            <div class="pdf-page" style="page-break-after: always; break-after: page; box-sizing: border-box; width: 680px; height: 980px; padding: 5px 0; display: flex; flex-direction: column; justify-content: space-between;">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Username</label>
-                    <input type="text" id="username" required placeholder="Masukkan username" 
-                        class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-red-500 transition">
-                </div>
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1">Password</label>
-                    <input type="password" id="password" required placeholder="••••••••" 
-                        class="w-full px-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-red-500 transition">
-                </div>
-                
-                <div id="loginError" class="hidden text-red-500 text-xs text-center font-semibold bg-red-50 p-2.5 rounded-lg border border-red-200"></div>
-
-                <button type="submit" id="btnLogin" 
-                    class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 rounded-xl shadow-lg shadow-red-200 transition duration-200 flex justify-center items-center gap-2">
-                    <span>Masuk ke Dashboard</span>
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <!-- 2. HALAMAN DASHBOARD MAIN -->
-    <div id="dashboardPage" class="hidden min-h-screen flex flex-col">
-        <!-- Top Navbar -->
-        <header class="bg-white border-b border-slate-200 px-6 py-4 flex flex-wrap justify-between items-center sticky top-0 z-10 shadow-sm">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-red-600 text-white rounded-xl flex items-center justify-center font-bold text-lg shadow-md shadow-red-100">
-                    CC
-                </div>
-                <div>
-                    <h1 class="text-lg font-bold text-slate-800 leading-tight">KPI Monitoring Portal</h1>
-                    <p class="text-xs text-slate-500">Call Center Performance & Agent Analytics</p>
-                </div>
-            </div>
-
-            <div class="flex items-center gap-3 mt-3 sm:mt-0 flex-wrap">
-                <!-- Datepicker Rentang Tanggal -->
-                <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs text-slate-600">
-                    <i data-lucide="calendar" class="w-4 h-4 text-slate-400"></i>
-                    <span class="font-semibold text-slate-500">Periode:</span>
-                    <input type="date" id="startDate" onchange="loadDashboardData()" class="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer">
-                    <span class="text-slate-400 font-bold">s/d</span>
-                    <input type="date" id="endDate" onchange="loadDashboardData()" class="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer">
-                </div>
-
-                <!-- Info User Login -->
-                <div class="text-right pl-3 border-l border-slate-200">
-                    <p id="userDisplayName" class="text-sm font-bold text-slate-800 flex items-center justify-end gap-1.5">
-                        <span>-</span>
-                    </p>
-                    <p id="userRole" class="text-xs text-slate-500 uppercase font-medium">-</p>
-                </div>
-
-                <!-- Tombol Logout -->
-                <button onclick="handleLogout()" title="Keluar dari akun" class="p-2.5 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-xl transition border border-slate-200 flex items-center justify-center">
-                    <i data-lucide="log-out" class="w-4 h-4"></i>
-                </button>
-            </div>
-        </header>
-
-        <!-- Main Content Area -->
-        <main class="p-6 max-w-7xl mx-auto w-full flex-grow space-y-6">
-            
-            <!-- Cards Summary -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="bg-white p-5 rounded-2xl border-2 border-blue-500/30 shadow-sm relative overflow-hidden flex flex-col justify-between">
-                    <div>
-                        <div class="flex justify-between items-center mb-1">
-                            <p class="text-xs font-semibold text-blue-600 uppercase tracking-wider">Total Interaksi</p>
-                            <div class="p-2 bg-blue-50 text-blue-600 rounded-xl"><i data-lucide="message-square" class="w-4 h-4"></i></div>
-                        </div>
-                        <h3 id="statTotalInteraksi" class="text-2xl font-bold text-slate-800">0</h3>
-                    </div>
-                    <div class="mt-3">
-                        <span id="statInteraksiDetail" class="inline-block text-[11px] font-medium bg-blue-50 text-blue-600 px-2.5 py-1 rounded-lg border border-blue-100">
-                            Mobile: 0 | Fixed: 0
-                        </span>
-                    </div>
-                </div>
-
-                <div class="bg-white p-5 rounded-2xl border-2 border-red-500/30 shadow-sm relative overflow-hidden flex flex-col justify-between">
-                    <div>
-                        <div class="flex justify-between items-center mb-1">
-                            <p class="text-xs font-semibold text-red-600 uppercase tracking-wider">Total Tiket</p>
-                            <div class="p-2 bg-red-50 text-red-600 rounded-xl"><i data-lucide="ticket" class="w-4 h-4"></i></div>
-                        </div>
-                        <h3 id="statTotalTiket" class="text-2xl font-bold text-slate-800">0</h3>
-                    </div>
-                    <div class="mt-3">
-                        <span id="statTiketDetail" class="inline-block text-[11px] font-medium bg-red-50 text-red-600 px-2.5 py-1 rounded-lg border border-red-100">
-                            Mobile: 0 | Fixed: 0
-                        </span>
-                    </div>
-                </div>
-                
-                <div class="bg-white p-5 rounded-2xl border-2 border-amber-500/30 shadow-sm relative overflow-hidden flex flex-col justify-between">
-                    <div>
-                        <div class="flex justify-between items-center mb-1">
-                            <p class="text-xs font-semibold text-amber-600 uppercase tracking-wider">Sales</p>
-                            <div class="p-2 bg-amber-50 text-amber-600 rounded-xl"><i data-lucide="circle-dollar-sign" class="w-4 h-4"></i></div>
-                        </div>
-                        <h3 id="statSales" class="text-2xl font-bold text-slate-800">0</h3>
-                    </div>
-                    <div class="mt-3">
-                        <span id="statSalesDetail" class="inline-block text-[11px] font-medium bg-amber-50 text-amber-600 px-2.5 py-1 rounded-lg border border-amber-100">
-                            Mobile: 0 | Fixed: 0
-                        </span>
-                    </div>
-                </div>
-
-                <div class="bg-white p-5 rounded-2xl border-2 border-emerald-500/30 shadow-sm relative overflow-hidden flex flex-col justify-between">
-                    <div>
-                        <div class="flex justify-between items-center mb-1">
-                            <p class="text-xs font-semibold text-emerald-600 uppercase tracking-wider">FCR</p>
-                            <div class="p-2 bg-emerald-50 text-emerald-600 rounded-xl"><i data-lucide="shield-check" class="w-4 h-4"></i></div>
-                        </div>
-                        <h3 id="statFcr" class="text-2xl font-bold text-slate-800">0%</h3>
-                    </div>
-                    <div class="mt-3">
-                        <span class="inline-block text-[11px] font-medium bg-emerald-50 text-emerald-600 px-2.5 py-1 rounded-lg border border-emerald-100">
-                            First Contact Resolution
-                        </span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- GRAFIK & FILTER ADMIN -->
-            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                <div class="flex flex-wrap justify-between items-center mb-4 gap-3">
-                    <div class="flex items-center gap-2.5">
-                        <div class="p-2 bg-slate-100 text-slate-600 rounded-xl"><i data-lucide="bar-chart-2" class="w-4 h-4"></i></div>
+                    <div style="border-bottom: 2px solid #dc2626; padding-bottom: 5px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: flex-end;">
                         <div>
-                            <h3 id="chartTitle" class="text-sm font-bold text-slate-800">Grafik Tren Penjualan Harian (Daily Sales)</h3>
-                            <p class="text-xs text-slate-400">Komparasi Per-Daily Produk Mobile (Biru) & Fixed (Merah)</p>
+                            <h1 style="font-size: 14px; font-weight: bold; color: #dc2626; margin: 0;">KPI MONITORING PORTAL</h1>
+                            <p style="font-size: 9px; color: #64748b; margin: 2px 0 0 0;">Agent Performance Evaluation Report</p>
+                        </div>
+                        <div style="text-align: right; font-size: 9px; color: #64748b;">
+                            <p style="margin: 0;">Tanggal Cetak: <b>${dateNow}</b></p>
+                            <p style="margin: 0;">Periode: <b style="color: #dc2626;">${monthText}</b></p>
                         </div>
                     </div>
 
-                    <div class="flex items-center gap-2.5 flex-wrap">
-                        <div id="adminFilterContainer" class="hidden flex items-center gap-2">
-                            <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-xl text-xs">
-                                <i data-lucide="user-check" class="w-3.5 h-3.5 text-slate-400 flex-shrink-0"></i>
-                                <span class="font-semibold text-slate-500">SPV:</span>
-                                <select id="filterSpvSelect" onchange="onAdminSpvChange()" class="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer text-xs max-w-[120px] truncate">
-                                    <option value="">Semua SPV</option>
-                                </select>
-                            </div>
+                    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 10px; margin-bottom: 8px; display: flex; justify-content: space-between; font-size: 10px;">
+                        <div>
+                            <p style="margin: 0 0 2px 0;">Nama Agent: <b style="color: #0f172a; font-size: 11px;">${ag.nama}</b></p>
+                            <p style="margin: 0;">SIAD: <b style="color: #0f172a;">${ag.siad || "-"}</b></p>
+                        </div>
+                        <div style="text-align: right;">
+                            <p style="margin: 0 0 2px 0;">Team Leader: <b>${currentUser ? currentUser.tl || currentUser.nama : "-"}</b></p>
+                            <p style="margin: 0;">Supervisor: <b>${currentUser ? currentUser.spv || "-" : "-"}</b></p>
+                        </div>
+                    </div>
 
-                            <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-xl text-xs">
-                                <i data-lucide="users" class="w-3.5 h-3.5 text-slate-400 flex-shrink-0"></i>
-                                <span class="font-semibold text-slate-500">TL:</span>
-                                <select id="filterTlSelect" onchange="loadDashboardData()" class="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer text-xs max-w-[120px] truncate">
-                                    <option value="">Semua TL</option>
-                                </select>
+                    <div style="font-size: 9px; font-weight: bold; color: #334155; margin-bottom: 8px; background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">
+                        PAGE 1: RINGKASAN PERFORMANCE (FCR, SALES & RETENSI)
+                    </div>
+
+                    <div style="font-size: 10px;">
+                        <div style="border-bottom: 1px solid #e2e8f0; font-weight: bold; padding-bottom: 2px; margin-bottom: 5px; color: #0f172a;">Report First Contact Resolution (FCR)</div>
+                        <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+                            <div style="flex: 1; background: #eff6ff; padding: 6px 8px; border-radius: 6px; border: 1px solid #dbeafe;">
+                                <div style="font-weight: bold; color: #1d4ed8; margin-bottom: 2px;">Interaksi</div>
+                                <div style="display: flex; justify-content: space-between;"><span>Total Interaksi Mobile:</span><b>${intMobTot}</b></div>
+                                <div style="display: flex; justify-content: space-between;"><span>Total Interaksi Fixed:</span><b>${intFixTot}</b></div>
+                                <div style="display: flex; justify-content: space-between;"><span>Total Interaksi Reciprocal:</span><b>${intRecip}</b></div>
+                            </div>
+                            <div style="flex: 1; background: #fef2f2; padding: 6px 8px; border-radius: 6px; border: 1px solid #fee2e2;">
+                                <div style="font-weight: bold; color: #b91c1c; margin-bottom: 2px;">Tiket KIP</div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 2px;"><span>Total Tiket KIP Mobile:</span><b>${tktMobTot}</b></div>
+                                <div style="display: flex; justify-content: space-between;"><span>Total Tiket KIP Fixed:</span><b>${tktFixTot}</b></div>
                             </div>
                         </div>
 
-                        <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
-                            <button id="btnTabSales" onclick="switchChartTab('sales')" class="px-3 py-1.5 text-xs font-bold rounded-lg transition bg-white text-red-600 shadow-sm">Sales</button>
-                            <button id="btnTabInteraksi" onclick="switchChartTab('interaksi')" class="px-3 py-1.5 text-xs font-bold rounded-lg transition text-slate-500 hover:text-slate-800">Interaksi</button>
-                            <button id="btnTabTicket" onclick="switchChartTab('ticket')" class="px-3 py-1.5 text-xs font-bold rounded-lg transition text-slate-500 hover:text-slate-800">Tiket</button>
+                        <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+                            <div style="flex: 1; background: #f8fafc; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #cbd5e1; padding-bottom: 2px;">
+                                    <span><b>%FCR Mobile</b></span><b style="color: #2563eb;">${fcrMobTot}</b>
+                                </div>
+                                <div style="display: flex; justify-content: space-around; margin-top: 4px; text-align: center;">
+                                    <div><span style="font-size: 7px; color: #64748b;">K</span><br><b>${fcrMobK}</b></div>
+                                    <div><span style="font-size: 7px; color: #64748b;">I</span><br><b>${fcrMobI}</b></div>
+                                    <div><span style="font-size: 7px; color: #64748b;">P</span><br><b>${fcrMobP}</b></div>
+                                </div>
+                            </div>
+                            <div style="flex: 1; background: #f8fafc; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #cbd5e1; padding-bottom: 2px;">
+                                    <span><b>%FCR Fixed</b></span><b style="color: #dc2626;">${fcrFixTot}</b>
+                                </div>
+                                <div style="display: flex; justify-content: space-around; margin-top: 4px; text-align: center;">
+                                    <div><span style="font-size: 7px; color: #64748b;">K</span><br><b>${fcrFixK}</b></div>
+                                    <div><span style="font-size: 7px; color: #64748b;">I</span><br><b>${fcrFixI}</b></div>
+                                    <div><span style="font-size: 7px; color: #64748b;">P</span><br><b>${fcrFixP}</b></div>
+                                    <div><span style="font-size: 7px; color: #64748b;">Recip</span><br><b>${fcrFixRec}</b></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="background: #ecfdf5; padding: 6px 10px; border-radius: 6px; border: 1px solid #a7f3d0; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <b style="color: #065f46;">%FCR ALL</b><b style="color: #047857; font-size: 12px;">${fcrAllVal}</b>
+                        </div>
+
+                        <div style="border-bottom: 1px solid #e2e8f0; font-weight: bold; padding-bottom: 2px; margin-bottom: 5px; color: #0f172a;">Report Sales</div>
+                        <div style="display: flex; gap: 8px; margin-bottom: 6px;">
+                            <div style="flex: 1; background: #f8fafc; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                <div style="display: flex; justify-content: space-between;"><span>Sales Mobile:</span><b>${salesMob}</b></div>
+                                <div style="display: flex; justify-content: space-between; margin-top: 2px;"><span>% Sales Mobile:</span><b style="color: #2563eb;">${pctMob}</b></div>
+                            </div>
+                            <div style="flex: 1; background: #f8fafc; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                <div style="display: flex; justify-content: space-between;"><span>Sales Fixed:</span><b>${salesFix}</b></div>
+                                <div style="display: flex; justify-content: space-between; margin-top: 2px;"><span>% Sales Fixed:</span><b style="color: #dc2626;">${pctFix}</b></div>
+                            </div>
+                        </div>
+
+                        <div style="border-bottom: 1px solid #e2e8f0; font-weight: bold; padding-bottom: 2px; margin-bottom: 5px; color: #0f172a;">Report Retensi</div>
+                        <div style="display: flex; gap: 8px; text-align: center;">
+                            <div style="flex: 1; background: #faf5ff; padding: 6px; border-radius: 6px; border: 1px solid #f3e8ff;"><span style="font-size: 8px; color: #64748b;">Retensi</span><br><b style="color: #7e22ce;">${retensiVal}</b></div>
+                            <div style="flex: 1; background: #faf5ff; padding: 6px; border-radius: 6px; border: 1px solid #f3e8ff;"><span style="font-size: 8px; color: #64748b;">KIP Retensi</span><br><b style="color: #7e22ce;">${kipRetensiVal}</b></div>
+                            <div style="flex: 1; background: #faf5ff; padding: 6px; border-radius: 6px; border: 1px solid #f3e8ff;"><span style="font-size: 8px; color: #64748b;">% Retensi</span><br><b style="color: #7e22ce;">${pctRetensiVal}</b></div>
                         </div>
                     </div>
                 </div>
-
-                <div class="relative h-72 w-full">
-                    <canvas id="mainChartCanvas"></canvas>
-                </div>
+                <div style="text-align: center; font-size: 8px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 4px;">Halaman 1 dari 2 (Ringkasan Kinerja Agen)</div>
             </div>
 
-            <!-- TABEL AGENT -->
-            <div id="agentTableContainer" class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                <div class="p-5 border-b border-slate-100 flex justify-between items-center flex-wrap gap-3">
-                    <h3 class="text-sm font-bold text-slate-700 flex items-center gap-2">
-                        <i data-lucide="users" class="w-4 h-4 text-slate-400"></i> Detail Pencapaian Agent
-                    </h3>
-                    <div class="flex items-center gap-2">
-                        <div class="relative">
-                            <i data-lucide="search" class="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"></i>
-                            <input type="text" id="searchInput" onkeyup="filterTableBySearch()" placeholder="Cari nama agent..." class="text-xs pl-8 pr-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-red-500 w-48">
-                        </div>
-                        
-                        <!-- TOMBOL DOWNLOAD REPORT -->
-                        <button onclick="openTeamExportModal()" class="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition shadow-sm">
-                            <i data-lucide="download" class="w-3.5 h-3.5"></i>
-                            <span>Download Report</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-xs text-slate-600">
-                        <thead class="bg-slate-50 text-slate-500 font-semibold uppercase tracking-wider border-b border-slate-100">
-                            <tr>
-                                <th class="p-4">Nama Agent</th>
-                                <th class="p-4">SIAD</th>
-                                <th class="p-4">Total Interaksi</th>
-                                <th class="p-4">Total Tiket</th>
-                                <th class="p-4">Sales Mobile</th>
-                                <th class="p-4">Sales Fixed</th>
-                                <th class="p-4">Total Sales</th>
-                                <th class="p-4 text-center">Report</th>
-                            </tr>
-                        </thead>
-                        <tbody id="agentTableBody" class="divide-y divide-slate-100">
-                            <tr><td colspan="8" class="p-4 text-center text-slate-400">Memuat data...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div id="paginationFooter" class="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center text-xs">
-                    <span id="pageInfoText" class="text-slate-500 font-medium">Menampilkan 0 dari 0 Agent</span>
-                    <div class="flex items-center gap-1.5">
-                        <button id="btnPrevPage" onclick="changePage(-1)" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-600 font-bold hover:bg-slate-100 disabled:opacity-50 transition">Previous</button>
-                        <span id="pageNumberDisplay" class="px-3 py-1.5 font-extrabold text-slate-800 bg-slate-200/60 rounded-lg">1</span>
-                        <button id="btnNextPage" onclick="changePage(1)" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-600 font-bold hover:bg-slate-100 disabled:opacity-50 transition">Next</button>
-                    </div>
-                </div>
-            </div>
-
-        </main>
-    </div>
-
-    <!-- 3. MODAL POPUP REPORT DETAIL AGENT INDIVIDUAL -->
-    <div id="reportModal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-            <div class="p-5 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-20 shadow-sm">
+            <!-- HALAMAN 2: AHT HARIAN AGEN (STRICT PAGE) -->
+            <div class="pdf-page" style="page-break-after: ${i === totalAgents - 1 ? 'avoid' : 'always'}; break-after: ${i === totalAgents - 1 ? 'avoid' : 'page'}; box-sizing: border-box; width: 680px; height: 980px; padding: 5px 0; display: flex; flex-direction: column; justify-content: space-between;">
                 <div>
-                    <div class="flex items-center gap-2">
-                        <span class="p-1.5 bg-red-50 text-red-600 rounded-lg"><i data-lucide="file-text" class="w-4 h-4"></i></span>
-                        <h3 id="modalAgentName" class="font-bold text-base text-slate-800">-</h3>
+                    <div style="border-bottom: 2px solid #dc2626; padding-bottom: 5px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: flex-end;">
+                        <div>
+                            <h1 style="font-size: 14px; font-weight: bold; color: #dc2626; margin: 0;">KPI MONITORING PORTAL</h1>
+                            <p style="font-size: 9px; color: #64748b; margin: 2px 0 0 0;">Average Handling Time (AHT) Detailed Report</p>
+                        </div>
+                        <div style="text-align: right; font-size: 9px; color: #64748b;">
+                            <p style="margin: 0;">Agent: <b>${ag.nama}</b></p>
+                            <p style="margin: 0;">Periode: <b style="color: #dc2626;">${monthText}</b></p>
+                        </div>
                     </div>
-                    <p id="modalAgentSiad" class="text-xs text-slate-400 mt-0.5 pl-7">SIAD: -</p>
+
+                    <div style="font-size: 9px; font-weight: bold; color: #334155; margin-bottom: 8px; background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">
+                        PAGE 2: AVERAGE HANDLING TIME (AHT) HARIAN
+                    </div>
+
+                    <div style="background: #fef2f2; padding: 6px 10px; border-radius: 6px; border: 1px solid #fecaca; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <div><b style="font-size: 10px; color: #0f172a;">Average Handling Time (AHT) Total</b><p style="font-size: 8px; color: #64748b; margin: 0;">Akumulasi performa AHT bulanan agen</p></div>
+                        <b style="font-size: 13px; color: #dc2626; background: #ffffff; padding: 2px 8px; border-radius: 4px; border: 1px solid #fee2e2;">${totalAhtFormatted}</b>
+                    </div>
+
+                    <div style="margin-bottom: 8px; border: 1px solid #e2e8f0; padding: 6px; border-radius: 6px;">
+                        <div style="font-size: 9px; font-weight: bold; color: #334155; margin-bottom: 3px;">Grafik Tren AHT Harian</div>
+                        <img src="${chartImgData}" style="width: 100%; height: 105px; object-fit: contain;" />
+                    </div>
+
+                    <div style="font-size: 9px; font-weight: bold; color: #334155; margin-bottom: 4px;">Rincian AHT Harian (${monthText})</div>
+                    <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px;">
+                        ${dailyGridHtml}
+                    </div>
                 </div>
-
-                <div class="flex items-center gap-3">
-                    <div class="flex bg-slate-100 p-1 rounded-xl">
-                        <button id="btnTabSummary" onclick="switchModalTab('summary')" class="px-3 py-1 text-xs font-bold rounded-lg transition bg-white text-slate-800 shadow-sm flex items-center gap-1">
-                            <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i> Ringkasan
-                        </button>
-                        <button id="btnTabAht" onclick="switchModalTab('aht')" class="px-3 py-1 text-xs font-bold rounded-lg transition text-slate-500 hover:text-slate-800 flex items-center gap-1">
-                            <i data-lucide="clock" class="w-3.5 h-3.5"></i> Report AHT
-                        </button>
-                    </div>
-
-                    <div class="flex gap-1 items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
-                        <button id="btnModalSep" onclick="changeReportMonth('2026-09')" class="px-2.5 py-1 text-xs font-bold rounded-lg transition bg-white text-slate-600 hover:bg-slate-50">Sep</button>
-                        <button id="btnModalOkt" onclick="changeReportMonth('2026-10')" class="px-2.5 py-1 text-xs font-bold rounded-lg transition bg-red-600 text-white shadow-sm">Okt</button>
-                    </div>
-
-                    <!-- TOMBOL DOWNLOAD REPORT DI MODAL INDIVIDUAL -->
-                    <button id="btnDownloadAgentPdf" onclick="exportAgentPdf()" title="Download Report Agent" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs flex items-center gap-1 transition shadow-sm">
-                        <i data-lucide="file-down" class="w-3.5 h-3.5"></i>
-                        <span>Download Report</span>
-                    </button>
-
-                    <button onclick="closeReportModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition">
-                        <i data-lucide="x" class="w-5 h-5"></i>
-                    </button>
-                </div>
+                <div style="text-align: center; font-size: 8px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 4px;">Halaman 2 dari 2 (AHT Harian Agen)</div>
             </div>
+        `;
 
-            <div class="p-6">
-                <div id="modalReportContent">
-                    <div class="text-center py-6 text-slate-400 text-xs">Memuat data report...</div>
-                </div>
-            </div>
-        </div>
-    </div>
+        masterPdfContainer.appendChild(agentBlock);
+    }
 
-    <!-- 4. MODAL POPUP PILIH PERIODE EXPORT TIM PDF -->
-    <div id="teamExportModal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6">
-            <div class="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
-                <div class="flex items-center gap-2">
-                    <div class="p-2 bg-red-50 text-red-600 rounded-xl"><i data-lucide="file-text" class="w-5 h-5"></i></div>
+    statusText.innerText = "Mengompilasi dan mengunduh PDF seluruh tim...";
+    window.scrollTo(0, 0);
+
+    const opt = {
+        margin:       [6, 8, 6, 8],
+        filename:     customFileName,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, logging: false, scrollY: 0, scrollX: 0 },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak:    { mode: ['css', 'legacy'], avoid: ['.pdf-page'] }
+    };
+
+    html2pdf().set(opt).from(masterPdfContainer).save().then(() => {
+        btnExport.disabled = false;
+        btnExport.innerHTML = `<i data-lucide="download" class="w-4 h-4"></i><span>Download Report</span>`;
+        statusText.innerText = "Selesai mengunduh Laporan Tim PDF.";
+        closeTeamExportModal();
+        lucide.createIcons();
+    }).catch(() => {
+        btnExport.disabled = false;
+        btnExport.innerHTML = `<i data-lucide="download" class="w-4 h-4"></i><span>Download Report</span>`;
+        statusText.innerText = "Gagal memproses PDF tim.";
+        lucide.createIcons();
+    });
+}
+
+// Export PDF Agent Individual
+async function exportAgentPdf() {
+    if (!selectedAgentForModal) return;
+
+    const btnDownload = document.getElementById("btnDownloadAgentPdf");
+    btnDownload.innerText = "Mengunduh...";
+    btnDownload.disabled = true;
+
+    const monthText = (selectedReportMonth === "2026-09") ? "September 2026" : "Oktober 2026";
+    const dateNow = new Date().toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' });
+    const currentUser = JSON.parse(localStorage.getItem("active_user"));
+
+    const initialTab = activeModalTab;
+
+    await switchModalTab("summary");
+    const summaryHtml = document.getElementById("modalReportContent").innerHTML;
+
+    await switchModalTab("aht");
+    await new Promise(r => setTimeout(r, 250));
+    
+    const ahtCanvas = document.getElementById("ahtChartCanvas");
+    let ahtImgData = "";
+    if (ahtCanvas) {
+        ahtImgData = ahtCanvas.toDataURL("image/png");
+    }
+    const ahtHtml = document.getElementById("modalReportContent").innerHTML;
+
+    await switchModalTab(initialTab);
+
+    const pdfContainer = document.createElement("div");
+    pdfContainer.style.width = "680px";
+    pdfContainer.style.margin = "0 auto";
+    pdfContainer.style.backgroundColor = "#ffffff";
+    pdfContainer.style.color = "#1e293b";
+    pdfContainer.style.fontFamily = "sans-serif";
+
+    pdfContainer.innerHTML = `
+        <div class="pdf-page" style="page-break-after: always; break-after: page; box-sizing: border-box; width: 680px; height: 980px; padding: 5px 0; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+                <div style="border-bottom: 2px solid #dc2626; padding-bottom: 5px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: flex-end;">
                     <div>
-                        <h3 class="font-bold text-slate-800 text-sm">Download Laporan Tim PDF</h3>
-                        <p class="text-xs text-slate-500">Pilih periode laporan seluruh anggota tim</p>
+                        <h1 style="font-size: 14px; font-weight: bold; color: #dc2626; margin: 0;">KPI MONITORING PORTAL</h1>
+                        <p style="font-size: 9px; color: #64748b; margin: 2px 0 0 0;">Agent Performance Evaluation Report</p>
                     </div>
-                </div>
-                <button onclick="closeTeamExportModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
-            </div>
-
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-2">Pilih Periode Bulan:</label>
-                    <div class="grid grid-cols-2 gap-3">
-                        <button type="button" id="btnTeamMonthSep" onclick="selectTeamExportMonth('2026-09')" class="p-3 border-2 border-slate-200 rounded-xl font-bold text-xs text-slate-700 hover:border-red-500 transition text-center">
-                            September 2026
-                        </button>
-                        <button type="button" id="btnTeamMonthOkt" onclick="selectTeamExportMonth('2026-10')" class="p-3 border-2 border-red-600 bg-red-50 text-red-600 rounded-xl font-bold text-xs transition text-center">
-                            Oktober 2026
-                        </button>
+                    <div style="text-align: right; font-size: 9px; color: #64748b;">
+                        <p style="margin: 0;">Tanggal Cetak: <b>${dateNow}</b></p>
+                        <p style="margin: 0;">Periode: <b style="color: #dc2626;">${monthText}</b></p>
                     </div>
                 </div>
 
-                <div id="teamExportStatusText" class="text-xs text-slate-500 text-center py-1">
-                    Laporan mencakup Ringkasan (FCR, Sales, Retensi) dan Grafik AHT Harian seluruh agen.
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 10px; margin-bottom: 8px; display: flex; justify-content: space-between; font-size: 10px;">
+                    <div>
+                        <p style="margin: 0 0 2px 0;">Nama Agent: <b style="color: #0f172a; font-size: 11px;">${selectedAgentForModal.nama}</b></p>
+                        <p style="margin: 0;">SIAD: <b style="color: #0f172a;">${selectedAgentForModal.siad || "-"}</b></p>
+                    </div>
+                    <div style="text-align: right;">
+                        <p style="margin: 0 0 2px 0;">Team Leader: <b>${currentUser ? currentUser.tl || currentUser.nama : "-"}</b></p>
+                        <p style="margin: 0;">Supervisor: <b>${currentUser ? currentUser.spv || "-" : "-"}</b></p>
+                    </div>
                 </div>
 
-                <!-- TOMBOL DOWNLOAD REPORT DI MODAL TIM -->
-                <button id="btnStartTeamExport" onclick="processTeamPdfExport()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-red-200 text-xs flex justify-center items-center gap-2 transition">
-                    <i data-lucide="download" class="w-4 h-4"></i>
-                    <span>Download Report</span>
-                </button>
+                <div style="font-size: 9px; font-weight: bold; color: #334155; margin-bottom: 8px; background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">
+                    PAGE 1: RINGKASAN PERFORMANCE (FCR, SALES & RETENSI)
+                </div>
+
+                <div id="pdfSummaryBody">
+                    ${summaryHtml}
+                </div>
             </div>
+            <div style="text-align: center; font-size: 8px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 4px;">Halaman 1 dari 2 (Ringkasan Kinerja Agen)</div>
         </div>
-    </div>
 
-    <!-- SCRIPT JS -->
-    <script src="kpi-dashboard/config.js"></script>
-    <script src="kpi-dashboard/pdf-export.js"></script>
-    <script src="kpi-dashboard/app.js"></script>
-</body>
-</html>
+        <div class="pdf-page" style="box-sizing: border-box; width: 680px; height: 980px; padding: 5px 0; display: flex; flex-direction: column; justify-content: space-between;">
+            <div>
+                <div style="border-bottom: 2px solid #dc2626; padding-bottom: 5px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div>
+                        <h1 style="font-size: 14px; font-weight: bold; color: #dc2626; margin: 0;">KPI MONITORING PORTAL</h1>
+                        <p style="font-size: 9px; color: #64748b; margin: 2px 0 0 0;">Average Handling Time (AHT) Detailed Report</p>
+                    </div>
+                    <div style="text-align: right; font-size: 9px; color: #64748b;">
+                        <p style="margin: 0;">Agent: <b>${selectedAgentForModal.nama}</b></p>
+                        <p style="margin: 0;">Periode: <b style="color: #dc2626;">${monthText}</b></p>
+                    </div>
+                </div>
+
+                <div style="font-size: 9px; font-weight: bold; color: #334155; margin-bottom: 8px; background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">
+                    PAGE 2: AVERAGE HANDLING TIME (AHT) HARIAN
+                </div>
+
+                <div id="pdfAhtBody">
+                    ${ahtHtml}
+                </div>
+            </div>
+            <div style="text-align: center; font-size: 8px; color: #94a3b8; border-top: 1px solid #f1f5f9; padding-top: 4px;">Halaman 2 dari 2 (AHT Harian Agen)</div>
+        </div>
+    `;
+
+    if (ahtImgData) {
+        const canvasInPdf = pdfContainer.querySelector("#ahtChartCanvas");
+        if (canvasInPdf && canvasInPdf.parentElement) {
+            canvasInPdf.parentElement.innerHTML = `<img src="${ahtImgData}" style="width: 100%; height: 110px; object-fit: contain;" />`;
+        }
+    }
+
+    const gridElem = pdfContainer.querySelector("#pdfAhtBody .grid");
+    if (gridElem) {
+        gridElem.style.display = "grid";
+        gridElem.style.gridTemplateColumns = "repeat(6, 1fr)";
+        gridElem.style.gap = "3px";
+    }
+
+    window.scrollTo(0, 0);
+
+    const opt = {
+        margin:       [6, 8, 6, 8],
+        filename:     `Report (${selectedAgentForModal.nama}).pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, logging: false, scrollY: 0, scrollX: 0 },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak:    { mode: ['css', 'legacy'], avoid: ['.pdf-page'] }
+    };
+
+    html2pdf().set(opt).from(pdfContainer).save().then(() => {
+        btnDownload.innerText = "Download Report";
+        btnDownload.disabled = false;
+    }).catch(() => {
+        btnDownload.innerText = "Download Report";
+        btnDownload.disabled = false;
+    });
+}
