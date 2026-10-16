@@ -210,9 +210,10 @@
                             <input type="text" id="searchInput" onkeyup="filterTableBySearch()" placeholder="Cari nama agent..." class="text-xs pl-8 pr-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-red-500 w-48">
                         </div>
                         
+                        <!-- TOMBOL DOWNLOAD REPORT -->
                         <button onclick="openTeamExportModal()" class="px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition shadow-sm">
                             <i data-lucide="download" class="w-3.5 h-3.5"></i>
-                            <span>Export Tim PDF</span>
+                            <span>Download Report</span>
                         </button>
                     </div>
                 </div>
@@ -277,9 +278,10 @@
                         <button id="btnModalOkt" onclick="changeReportMonth('2026-10')" class="px-2.5 py-1 text-xs font-bold rounded-lg transition bg-red-600 text-white shadow-sm">Okt</button>
                     </div>
 
-                    <button id="btnDownloadAgentPdf" onclick="exportAgentPdf()" title="Download PDF Report Agent" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs flex items-center gap-1 transition shadow-sm">
+                    <!-- TOMBOL DOWNLOAD REPORT DI MODAL INDIVIDUAL -->
+                    <button id="btnDownloadAgentPdf" onclick="exportAgentPdf()" title="Download Report Agent" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs flex items-center gap-1 transition shadow-sm">
                         <i data-lucide="file-down" class="w-3.5 h-3.5"></i>
-                        <span>Download PDF</span>
+                        <span>Download Report</span>
                     </button>
 
                     <button onclick="closeReportModal()" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition">
@@ -303,7 +305,7 @@
                 <div class="flex items-center gap-2">
                     <div class="p-2 bg-red-50 text-red-600 rounded-xl"><i data-lucide="file-text" class="w-5 h-5"></i></div>
                     <div>
-                        <h3 class="font-bold text-slate-800 text-sm">Export Laporan Tim PDF</h3>
+                        <h3 class="font-bold text-slate-800 text-sm">Download Laporan Tim PDF</h3>
                         <p class="text-xs text-slate-500">Pilih periode laporan seluruh anggota tim</p>
                     </div>
                 </div>
@@ -329,15 +331,16 @@
                     Laporan mencakup Ringkasan (FCR, Sales, Retensi) dan Grafik AHT Harian seluruh agen.
                 </div>
 
+                <!-- TOMBOL DOWNLOAD REPORT DI MODAL TIM -->
                 <button id="btnStartTeamExport" onclick="processTeamPdfExport()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-red-200 text-xs flex justify-center items-center gap-2 transition">
                     <i data-lucide="download" class="w-4 h-4"></i>
-                    <span>Generate & Download PDF Tim</span>
+                    <span>Download Report</span>
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- SCRIPT JS DENGAN PATH KE FOLDER kpi-dashboard -->
+    <!-- SCRIPT JS -->
     <script src="kpi-dashboard/config.js"></script>
     <script src="kpi-dashboard/pdf-export.js"></script>
     <script src="kpi-dashboard/app.js"></script>
