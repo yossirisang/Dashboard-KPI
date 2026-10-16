@@ -18,10 +18,8 @@
     <!-- KONFIGURASI LINK GOOGLE SHEETS -->
     <script>
         const CONFIG = {
-            // Link CSV Google Sheets Data User
             USERS_SHEET_URL: "https://docs.google.com/spreadsheets/d/e/2PACX-1vT46EP2xu4aZCQsT6V8tNNolBJ1PpNvu2SAIpypQ0ZXRxODokx-5h2KX9Sp-bXgw1HvwbuE3YRqIC1r/pub?gid=0&single=true&output=csv",
             
-            // Link CSV Google Sheets Per Bulan & Per Kategori
             MONTHLY_METRICS: {
                 "2026-10": {
                     sales: "https://docs.google.com/spreadsheets/d/e/2PACX-1vR6xc3DQwV-xvuG_0d9OATKRjVoxP2pVzX5Si95vXBJXyrmo4WFVlc2K84aNfcIWQ/pub?gid=1693059487&single=true&output=csv",
@@ -45,7 +43,7 @@
         };
 
         let csvCache = {}; 
-        let allUserRows = []; // Menyimpan master data user
+        let allUserRows = []; 
         let activeChartType = 'sales'; 
         let currentChartData = {
             sales: { mobile: [], fixed: [], labels: [] },
@@ -57,6 +55,11 @@
         let selectedAgentForModal = null;
         let selectedReportMonth = "2026-10";
         let activeModalTab = "summary"; 
+
+        // VARIABEL PAGINATION TABEL AGENT
+        let filteredAgentList = [];
+        let currentPage = 1;
+        const pageSize = 20;
     </script>
 
     <!-- 1. HALAMAN LOGIN -->
@@ -107,26 +110,6 @@
             </div>
 
             <div class="flex items-center gap-3 mt-3 sm:mt-0 flex-wrap">
-                
-                <!-- DROPDOWN FILTER KHUSUS ADMIN (FILTER SPV & TL) -->
-                <div id="adminFilterContainer" class="hidden flex items-center gap-2">
-                    <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-xl text-xs">
-                        <i data-lucide="user-check" class="w-3.5 h-3.5 text-slate-400"></i>
-                        <span class="font-semibold text-slate-500">SPV:</span>
-                        <select id="filterSpvSelect" onchange="onAdminSpvChange()" class="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer text-xs">
-                            <option value="">Semua SPV</option>
-                        </select>
-                    </div>
-
-                    <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-xl text-xs">
-                        <i data-lucide="users" class="w-3.5 h-3.5 text-slate-400"></i>
-                        <span class="font-semibold text-slate-500">TL:</span>
-                        <select id="filterTlSelect" onchange="loadDashboardData()" class="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer text-xs">
-                            <option value="">Semua TL</option>
-                        </select>
-                    </div>
-                </div>
-
                 <!-- Datepicker Rentang Tanggal -->
                 <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs text-slate-600">
                     <i data-lucide="calendar" class="w-4 h-4 text-slate-400"></i>
@@ -144,7 +127,7 @@
                     <p id="userRole" class="text-xs text-slate-500 uppercase font-medium">-</p>
                 </div>
 
-                <!-- Tombol Logout Icon Minimalis -->
+                <!-- Tombol Logout -->
                 <button onclick="handleLogout()" title="Keluar dari akun" class="p-2.5 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-xl transition border border-slate-200 flex items-center justify-center">
                     <i data-lucide="log-out" class="w-4 h-4"></i>
                 </button>
@@ -157,7 +140,7 @@
             <!-- Cards Summary -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 
-                <!-- CARD INTERAKSI (OUTLINE BIRU) -->
+                <!-- CARD INTERAKSI -->
                 <div class="bg-white p-5 rounded-2xl border-2 border-blue-500/30 shadow-sm relative overflow-hidden flex flex-col justify-between">
                     <div>
                         <div class="flex justify-between items-center mb-1">
@@ -175,7 +158,7 @@
                     </div>
                 </div>
 
-                <!-- CARD TIKET (OUTLINE MERAH) -->
+                <!-- CARD TIKET -->
                 <div class="bg-white p-5 rounded-2xl border-2 border-red-500/30 shadow-sm relative overflow-hidden flex flex-col justify-between">
                     <div>
                         <div class="flex justify-between items-center mb-1">
@@ -193,7 +176,7 @@
                     </div>
                 </div>
                 
-                <!-- CARD SALES (OUTLINE KUNING/AMBER & ICON UANG) -->
+                <!-- CARD SALES -->
                 <div class="bg-white p-5 rounded-2xl border-2 border-amber-500/30 shadow-sm relative overflow-hidden flex flex-col justify-between">
                     <div>
                         <div class="flex justify-between items-center mb-1">
@@ -211,7 +194,7 @@
                     </div>
                 </div>
 
-                <!-- CARD FCR (OUTLINE HIJAU) -->
+                <!-- CARD FCR -->
                 <div class="bg-white p-5 rounded-2xl border-2 border-emerald-500/30 shadow-sm relative overflow-hidden flex flex-col justify-between">
                     <div>
                         <div class="flex justify-between items-center mb-1">
@@ -230,7 +213,7 @@
                 </div>
             </div>
 
-            <!-- GRAFIK TREN HARIAN -->
+            <!-- GRAFIK TREN HARIAN & FILTER ADMIN -->
             <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                 <div class="flex flex-wrap justify-between items-center mb-4 gap-3">
                     <div class="flex items-center gap-2.5">
@@ -243,17 +226,38 @@
                         </div>
                     </div>
 
-                    <!-- TAB SWITCHER GRAFIK -->
-                    <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
-                        <button id="btnTabSales" onclick="switchChartTab('sales')" class="px-3 py-1.5 text-xs font-bold rounded-lg transition bg-white text-red-600 shadow-sm">
-                            Sales
-                        </button>
-                        <button id="btnTabInteraksi" onclick="switchChartTab('interaksi')" class="px-3 py-1.5 text-xs font-bold rounded-lg transition text-slate-500 hover:text-slate-800">
-                            Interaksi
-                        </button>
-                        <button id="btnTabTicket" onclick="switchChartTab('ticket')" class="px-3 py-1.5 text-xs font-bold rounded-lg transition text-slate-500 hover:text-slate-800">
-                            Tiket
-                        </button>
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <!-- DROPDOWN FILTER KHUSUS ADMIN (MEMINDAHKAN KE SEBELAH KIRI SWITCHPAGE) -->
+                        <div id="adminFilterContainer" class="hidden flex items-center gap-2">
+                            <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-xl text-xs">
+                                <i data-lucide="user-check" class="w-3.5 h-3.5 text-slate-400"></i>
+                                <span class="font-semibold text-slate-500">SPV:</span>
+                                <select id="filterSpvSelect" onchange="onAdminSpvChange()" class="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer text-xs">
+                                    <option value="">Semua SPV</option>
+                                </select>
+                            </div>
+
+                            <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-xl text-xs">
+                                <i data-lucide="users" class="w-3.5 h-3.5 text-slate-400"></i>
+                                <span class="font-semibold text-slate-500">TL:</span>
+                                <select id="filterTlSelect" onchange="loadDashboardData()" class="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer text-xs">
+                                    <option value="">Semua TL</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- TAB SWITCHER GRAFIK -->
+                        <div class="flex items-center gap-2 bg-slate-100 p-1 rounded-xl">
+                            <button id="btnTabSales" onclick="switchChartTab('sales')" class="px-3 py-1.5 text-xs font-bold rounded-lg transition bg-white text-red-600 shadow-sm">
+                                Sales
+                            </button>
+                            <button id="btnTabInteraksi" onclick="switchChartTab('interaksi')" class="px-3 py-1.5 text-xs font-bold rounded-lg transition text-slate-500 hover:text-slate-800">
+                                Interaksi
+                            </button>
+                            <button id="btnTabTicket" onclick="switchChartTab('ticket')" class="px-3 py-1.5 text-xs font-bold rounded-lg transition text-slate-500 hover:text-slate-800">
+                                Tiket
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -295,6 +299,20 @@
                         </tbody>
                     </table>
                 </div>
+
+                <!-- FOOTER PAGINATION DENGAN MAX 20 AGENT PER HALAMAN -->
+                <div id="paginationFooter" class="p-4 border-t border-slate-100 bg-slate-50/50 flex justify-between items-center text-xs">
+                    <span id="pageInfoText" class="text-slate-500 font-medium">Menampilkan 0 dari 0 Agent</span>
+                    <div class="flex items-center gap-1.5">
+                        <button id="btnPrevPage" onclick="changePage(-1)" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-600 font-bold hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                            Previous
+                        </button>
+                        <span id="pageNumberDisplay" class="px-3 py-1.5 font-extrabold text-slate-800 bg-slate-200/60 rounded-lg">1</span>
+                        <button id="btnNextPage" onclick="changePage(1)" class="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-600 font-bold hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed transition">
+                            Next
+                        </button>
+                    </div>
+                </div>
             </div>
 
         </main>
@@ -315,7 +333,7 @@
                 </div>
 
                 <div class="flex items-center gap-3">
-                    <!-- Switch Tab Modal (Summary vs AHT) -->
+                    <!-- Switch Tab Modal -->
                     <div class="flex bg-slate-100 p-1 rounded-xl">
                         <button id="btnTabSummary" onclick="switchModalTab('summary')" class="px-3 py-1 text-xs font-bold rounded-lg transition bg-white text-slate-800 shadow-sm flex items-center gap-1">
                             <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i> Ringkasan
@@ -508,10 +526,8 @@
             document.getElementById("userDisplayName").innerText = user.nama;
             document.getElementById("userRole").innerText = user.role;
 
-            // JIKA ROLE ADMIN: TAMPILKAN KONTROL FILTER SPV & TL
             if (user.role.includes("ADMIN")) {
                 document.getElementById("adminFilterContainer").classList.remove("hidden");
-                // Unduh/Isi data opsi SPV & TL jika belum terisi
                 if (allUserRows.length === 0) {
                     Papa.parse(CONFIG.USERS_SHEET_URL, {
                         download: true, header: false, skipEmptyLines: true,
@@ -532,7 +548,6 @@
             loadDashboardData();
         }
 
-        // POPULATE OPTION FILTER SPV & TL UNTUK ADMIN
         function populateAdminFilters() {
             const spvSelect = document.getElementById("filterSpvSelect");
             const tlSelect = document.getElementById("filterTlSelect");
@@ -653,7 +668,6 @@
 
             const role = currentUser.role.toUpperCase();
 
-            // AMBIL VALUE FILTER KHUSUS ADMIN
             const adminSpvFilter = document.getElementById("filterSpvSelect") ? document.getElementById("filterSpvSelect").value.toLowerCase() : "";
             const adminTlFilter = document.getElementById("filterTlSelect") ? document.getElementById("filterTlSelect").value.toLowerCase() : "";
 
@@ -701,7 +715,6 @@
 
                         let isMatch = false;
 
-                        // JIKA ROLE ADMIN: FILTER BERDASARKAN DROPDOWN SPV & TL
                         if (role.includes("ADMIN")) {
                             const matchSpv = (!adminSpvFilter || agentSpv === adminSpvFilter);
                             const matchTl = (!adminTlFilter || agentTl === adminTlFilter);
@@ -766,35 +779,13 @@
             aggregateMetric('ticket', metricsDataMap.ticket);
 
             let totals = { salesMob: 0, salesFix: 0, intMob: 0, intFix: 0, tktMob: 0, tktFix: 0 };
-            let tbodyHtml = "";
+            
+            filteredAgentList = Object.values(agentSummary);
 
-            Object.values(agentSummary).forEach(ag => {
+            filteredAgentList.forEach(ag => {
                 totals.salesMob += ag.salesMob; totals.salesFix += ag.salesFix;
                 totals.intMob += ag.intMob; totals.intFix += ag.intFix;
                 totals.tktMob += ag.tktMob; totals.tktFix += ag.tktFix;
-
-                const totalInt = ag.intMob + ag.intFix;
-                const totalTkt = ag.tktMob + ag.tktFix;
-                const totalSales = ag.salesMob + ag.salesFix;
-
-                const agDataJson = JSON.stringify({ siad: ag.siad, nama: ag.nama }).replace(/"/g, '&quot;');
-
-                tbodyHtml += `
-                    <tr class="hover:bg-slate-50 transition">
-                        <td class="p-4 font-semibold text-slate-800">${ag.nama}</td>
-                        <td class="p-4 text-slate-500">${ag.siad}</td>
-                        <td class="p-4 font-semibold text-slate-700">${totalInt.toLocaleString("id-ID")}</td>
-                        <td class="p-4 font-semibold text-slate-700">${totalTkt.toLocaleString("id-ID")}</td>
-                        <td class="p-4 font-semibold text-blue-600">${ag.salesMob.toLocaleString("id-ID")}</td>
-                        <td class="p-4 font-semibold text-red-600">${ag.salesFix.toLocaleString("id-ID")}</td>
-                        <td class="p-4 font-bold text-slate-800">${totalSales.toLocaleString("id-ID")}</td>
-                        <td class="p-4 text-center">
-                            <button onclick="openReportModal(${agDataJson})" title="Lihat Detail Report Agent" class="p-2 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-xl transition border border-slate-200 inline-flex items-center justify-center">
-                                <i data-lucide="file-text" class="w-4 h-4"></i>
-                            </button>
-                        </td>
-                    </tr>
-                `;
             });
 
             const totSales = totals.salesMob + totals.salesFix;
@@ -817,12 +808,81 @@
 
             document.getElementById("statFcr").innerText = `${fcrPercentage.toFixed(2)}%`;
 
-            const tbody = document.getElementById("agentTableBody");
-            tbody.innerHTML = Object.keys(agentSummary).length > 0 ? tbodyHtml : `<tr><td colspan="8" class="p-4 text-center text-slate-400">Tidak ada data ditemukan untuk tim ini.</td></tr>`;
-
-            setTimeout(() => { lucide.createIcons(); }, 50);
+            currentPage = 1;
+            renderPaginatedTable();
 
             renderChart(activeChartType);
+        }
+
+        // RENDER TABEL AGENT DENGAN PAGINATION (MAX 20 ORANG PER HALAMAN)
+        function renderPaginatedTable() {
+            const tbody = document.getElementById("agentTableBody");
+            const searchVal = document.getElementById("searchInput").value.toLowerCase().trim();
+
+            let displayList = filteredAgentList.filter(ag => 
+                ag.nama.toLowerCase().includes(searchVal) || 
+                ag.siad.toLowerCase().includes(searchVal)
+            );
+
+            const totalItems = displayList.length;
+            const totalPages = Math.ceil(totalItems / pageSize) || 1;
+
+            if (currentPage < 1) currentPage = 1;
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            const startIndex = (currentPage - 1) * pageSize;
+            const endIndex = Math.min(startIndex + pageSize, totalItems);
+            const pageData = displayList.slice(startIndex, endIndex);
+
+            if (pageData.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-400">Tidak ada data agent ditemukan.</td></tr>`;
+            } else {
+                let tbodyHtml = "";
+                pageData.forEach(ag => {
+                    const totalInt = ag.intMob + ag.intFix;
+                    const totalTkt = ag.tktMob + ag.tktFix;
+                    const totalSales = ag.salesMob + ag.salesFix;
+                    const agDataJson = JSON.stringify({ siad: ag.siad, nama: ag.nama }).replace(/"/g, '&quot;');
+
+                    tbodyHtml += `
+                        <tr class="hover:bg-slate-50 transition">
+                            <td class="p-4 font-semibold text-slate-800">${ag.nama}</td>
+                            <td class="p-4 text-slate-500">${ag.siad}</td>
+                            <td class="p-4 font-semibold text-slate-700">${totalInt.toLocaleString("id-ID")}</td>
+                            <td class="p-4 font-semibold text-slate-700">${totalTkt.toLocaleString("id-ID")}</td>
+                            <td class="p-4 font-semibold text-blue-600">${ag.salesMob.toLocaleString("id-ID")}</td>
+                            <td class="p-4 font-semibold text-red-600">${ag.salesFix.toLocaleString("id-ID")}</td>
+                            <td class="p-4 font-bold text-slate-800">${totalSales.toLocaleString("id-ID")}</td>
+                            <td class="p-4 text-center">
+                                <button onclick="openReportModal(${agDataJson})" title="Lihat Detail Report Agent" class="p-2 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-xl transition border border-slate-200 inline-flex items-center justify-center">
+                                    <i data-lucide="file-text" class="w-4 h-4"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                tbody.innerHTML = tbodyHtml;
+            }
+
+            // Update Teks Informasi & Status Tombol Prev/Next
+            const pageStartCount = totalItems > 0 ? startIndex + 1 : 0;
+            document.getElementById("pageInfoText").innerText = `Menampilkan ${pageStartCount} - ${endIndex} dari ${totalItems} Agent`;
+            document.getElementById("pageNumberDisplay").innerText = `${currentPage} / ${totalPages}`;
+
+            document.getElementById("btnPrevPage").disabled = (currentPage <= 1);
+            document.getElementById("btnNextPage").disabled = (currentPage >= totalPages);
+
+            setTimeout(() => { lucide.createIcons(); }, 50);
+        }
+
+        function changePage(direction) {
+            currentPage += direction;
+            renderPaginatedTable();
+        }
+
+        function filterTableBySearch() {
+            currentPage = 1;
+            renderPaginatedTable();
         }
 
         // FUNGSI MODAL POPUP & CONTROL TAB
@@ -1403,15 +1463,6 @@
                         }
                     }
                 }
-            });
-        }
-
-        function filterTableBySearch() {
-            const query = document.getElementById("searchInput").value.toLowerCase();
-            const rows = document.querySelectorAll("#agentTableBody tr");
-            rows.forEach(row => {
-                const text = row.innerText.toLowerCase();
-                row.style.display = text.includes(query) ? "" : "none";
             });
         }
     </script>
