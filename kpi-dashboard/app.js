@@ -1,0 +1,1025 @@
+document.addEventListener("DOMContentLoaded", () => {
+    lucide.createIcons();
+    const currentUser = JSON.parse(localStorage.getItem("active_user"));
+    if (currentUser) {
+        initDefaultDates();
+        showDashboard(currentUser);
+    }
+});
+
+function initDefaultDates() {
+    const startDateElem = document.getElementById("startDate");
+    const endDateElem = document.getElementById("endDate");
+
+    if (!startDateElem.value || !endDateElem.value) {
+        startDateElem.value = "2026-10-01";
+        endDateElem.value = "2026-10-31";
+    }
+}
+
+function getVal(row, colIdx) {
+    return (row && row[colIdx] !== undefined) ? row[colIdx].toString().trim() : "";
+}
+
+function formatAhtValue(rawVal) {
+    if (!rawVal || rawVal === "" || rawVal === "-") return "-";
+    
+    let cleanStr = rawVal.replace(',', '.').trim();
+    let num = parseFloat(cleanStr);
+
+    if (!isNaN(num)) {
+        if (num < 1 && num > 0) {
+            let totalSeconds = Math.round(num * 86400);
+            let h = Math.floor(totalSeconds / 3600);
+            let m = Math.floor((totalSeconds % 3600) / 60);
+            let s = totalSeconds % 60;
+
+            let mm = String(m).padStart(2, '0');
+            let ss = String(s).padStart(2, '0');
+            return (h > 0) ? `${String(h).padStart(2, '0')}:${mm}:${ss}` : `${mm}:${ss}`;
+        }
+        if (num >= 1) {
+            let totalSeconds = Math.round(num);
+            let h = Math.floor(totalSeconds / 3600);
+            let m = Math.floor((totalSeconds % 3600) / 60);
+            let s = totalSeconds % 60;
+
+            let mm = String(m).padStart(2, '0');
+            let ss = String(s).padStart(2, '0');
+            return (h > 0) ? `${String(h).padStart(2, '0')}:${mm}:${ss}` : `${mm}:${ss}`;
+        }
+    }
+    return rawVal;
+}
+
+function parseAhtToSeconds(rawVal) {
+    if (!rawVal || rawVal === "" || rawVal === "-") return 0;
+
+    let cleanStr = rawVal.replace(',', '.').trim();
+    let num = parseFloat(cleanStr);
+
+    if (!isNaN(num)) {
+        if (num < 1 && num > 0) return Math.round(num * 86400); 
+        if (num >= 1) return Math.round(num); 
+    }
+
+    let parts = rawVal.split(':').map(p => parseInt(p, 10) || 0);
+    if (parts.length === 3) return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
+    if (parts.length === 2) return (parts[0] * 60) + parts[1];
+
+    return 0;
+}
+
+function handleLogin(e) {
+    e.preventDefault();
+    const userIn = document.getElementById("username").value.trim().toLowerCase();
+    const passIn = document.getElementById("password").value.trim().toLowerCase();
+    const errDiv = document.getElementById("loginError");
+    const btn = document.getElementById("btnLogin");
+
+    errDiv.classList.add("hidden");
+    btn.innerHTML = "<span>Memverifikasi...</span>";
+
+    Papa.parse(CONFIG.USERS_SHEET_URL, {
+        download: true,
+        header: false,
+        skipEmptyLines: true,
+        complete: function(results) {
+            btn.innerHTML = "<span>Masuk ke Dashboard</span>";
+            const rows = results.data;
+            allUserRows = rows.slice(1);
+
+            const matchedUser = allUserRows.find(r => {
+                const sheetUser = getVal(r, 6).toLowerCase();
+                const sheetPass = getVal(r, 7).toLowerCase();
+                return sheetUser === userIn && sheetPass === passIn && sheetUser !== "";
+            });
+
+            if (matchedUser) {
+                const userNama = getVal(matchedUser, 3);
+                const userRole = (getVal(matchedUser, 8) || "AGENT").toUpperCase();
+
+                let teamMembers = [];
+                if (userRole.includes("TL") || userRole.includes("LEADER") || userRole.includes("SPV") || userRole.includes("SUPERVISOR")) {
+                    const targetLeaderName = userNama.toLowerCase();
+
+                    allUserRows.forEach(r => {
+                        const agentTl = getVal(r, 4).toLowerCase();  
+                        const agentSpv = getVal(r, 5).toLowerCase(); 
+
+                        const isMatchTL = (userRole.includes("TL") || userRole.includes("LEADER")) && agentTl === targetLeaderName;
+                        const isMatchSPV = (userRole.includes("SPV") || userRole.includes("SUPERVISOR")) && agentSpv === targetLeaderName;
+
+                        if (isMatchTL || isMatchSPV) {
+                            teamMembers.push({
+                                siad: getVal(r, 1).toLowerCase(),  
+                                login: getVal(r, 2).toLowerCase(), 
+                                nama: getVal(r, 3).toLowerCase()   
+                            });
+                        }
+                    });
+                }
+
+                const userData = {
+                    siad: getVal(matchedUser, 1),
+                    login_id: getVal(matchedUser, 2),
+                    nama: userNama,
+                    tl: getVal(matchedUser, 4),
+                    spv: getVal(matchedUser, 5),
+                    username: getVal(matchedUser, 6),
+                    role: userRole,
+                    teamMembers: teamMembers 
+                };
+                
+                localStorage.setItem("active_user", JSON.stringify(userData));
+                initDefaultDates();
+                showDashboard(userData);
+            } else {
+                errDiv.innerText = "Username atau password tidak cocok / tidak ditemukan.";
+                errDiv.classList.remove("hidden");
+            }
+        },
+        error: function() {
+            btn.innerHTML = "<span>Masuk ke Dashboard</span>";
+            errDiv.innerText = "Gagal mengunduh data user dari Google Sheets.";
+            errDiv.classList.remove("hidden");
+        }
+    });
+}
+
+function showDashboard(user) {
+    document.getElementById("loginPage").classList.add("hidden");
+    document.getElementById("dashboardPage").classList.remove("hidden");
+    document.getElementById("userDisplayName").innerText = user.nama;
+    document.getElementById("userRole").innerText = user.role;
+
+    if (user.role.includes("ADMIN")) {
+        document.getElementById("adminFilterContainer").classList.remove("hidden");
+        if (allUserRows.length === 0) {
+            Papa.parse(CONFIG.USERS_SHEET_URL, {
+                download: true, header: false, skipEmptyLines: true,
+                complete: function(res) {
+                    allUserRows = res.data.slice(1);
+                    populateAdminFilters();
+                }
+            });
+        } else {
+            populateAdminFilters();
+        }
+    } else {
+        document.getElementById("adminFilterContainer").classList.add("hidden");
+    }
+    
+    setTimeout(() => { lucide.createIcons(); }, 50);
+    loadDashboardData();
+}
+
+function populateAdminFilters() {
+    const spvSelect = document.getElementById("filterSpvSelect");
+    const tlSelect = document.getElementById("filterTlSelect");
+
+    let spvSet = new Set();
+    let tlSet = new Set();
+
+    allUserRows.forEach(r => {
+        const spv = getVal(r, 5);
+        const tl = getVal(r, 4);
+        if (spv) spvSet.add(spv);
+        if (tl) tlSet.add(tl);
+    });
+
+    spvSelect.innerHTML = `<option value="">Semua SPV</option>` + 
+        Array.from(spvSet).sort().map(s => `<option value="${s}">${s}</option>`).join("");
+
+    tlSelect.innerHTML = `<option value="">Semua TL</option>` + 
+        Array.from(tlSet).sort().map(t => `<option value="${t}">${t}</option>`).join("");
+}
+
+function onAdminSpvChange() {
+    const selectedSpv = document.getElementById("filterSpvSelect").value.toLowerCase();
+    const tlSelect = document.getElementById("filterTlSelect");
+
+    let tlSet = new Set();
+    allUserRows.forEach(r => {
+        const spv = getVal(r, 5).toLowerCase();
+        const tl = getVal(r, 4);
+        if ((!selectedSpv || spv === selectedSpv) && tl) {
+            tlSet.add(tl);
+        }
+    });
+
+    tlSelect.innerHTML = `<option value="">Semua TL</option>` + 
+        Array.from(tlSet).sort().map(t => `<option value="${t}">${t}</option>`).join("");
+
+    loadDashboardData();
+}
+
+function handleLogout() {
+    localStorage.removeItem("active_user");
+    window.location.reload();
+}
+
+function fetchCsvData(url, skipHeaderRows = 2) {
+    return new Promise((resolve) => {
+        if (!url || url.startsWith("PASTE_LINK") || url === "") {
+            resolve([]);
+            return;
+        }
+        if (csvCache[url]) {
+            resolve(csvCache[url]);
+            return;
+        }
+        Papa.parse(url, {
+            download: true,
+            header: false,
+            skipEmptyLines: true,
+            complete: function(results) {
+                const rows = results.data.slice(skipHeaderRows);
+                csvCache[url] = rows;
+                resolve(rows);
+            },
+            error: function() {
+                resolve([]);
+            }
+        });
+    });
+}
+
+async function loadDashboardData() {
+    const startVal = document.getElementById("startDate").value;
+    const endVal = document.getElementById("endDate").value;
+    const tbody = document.getElementById("agentTableBody");
+
+    if (!startVal || !endVal) return;
+
+    const [sYear, sMonth, sDay] = startVal.split("-").map(Number);
+    const [eYear, eMonth, eDay] = endVal.split("-").map(Number);
+
+    const start = new Date(sYear, sMonth - 1, sDay);
+    const end = new Date(eYear, eMonth - 1, eDay);
+
+    if (start > end) {
+        tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-red-500">Tanggal awal tidak boleh melebihi tanggal akhir.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-400">Memuat data rentang tanggal...</td></tr>`;
+
+    let monthsToFetch = [];
+    let curr = new Date(start.getFullYear(), start.getMonth(), 1);
+    while (curr <= end) {
+        const yyyy = curr.getFullYear();
+        const mm = String(curr.getMonth() + 1).padStart(2, '0');
+        monthsToFetch.push(`${yyyy}-${mm}`);
+        curr.setMonth(curr.getMonth() + 1);
+    }
+
+    let metricsDataMap = { sales: {}, interaksi: {}, ticket: {} };
+
+    for (let mKey of monthsToFetch) {
+        const metricUrls = CONFIG.MONTHLY_METRICS[mKey];
+        if (metricUrls) {
+            metricsDataMap.sales[mKey] = await fetchCsvData(metricUrls.sales, 2);
+            metricsDataMap.interaksi[mKey] = await fetchCsvData(metricUrls.interaksi, 2);
+            metricsDataMap.ticket[mKey] = await fetchCsvData(metricUrls.ticket, 2);
+        }
+    }
+
+    processDashboardMetrics(start, end, metricsDataMap);
+}
+
+function processDashboardMetrics(startDate, endDate, metricsDataMap) {
+    const currentUser = JSON.parse(localStorage.getItem("active_user"));
+    if (!currentUser) return;
+
+    const role = currentUser.role.toUpperCase();
+
+    const adminSpvFilter = document.getElementById("filterSpvSelect") ? document.getElementById("filterSpvSelect").value.toLowerCase() : "";
+    const adminTlFilter = document.getElementById("filterTlSelect") ? document.getElementById("filterTlSelect").value.toLowerCase() : "";
+
+    let dateLabels = [];
+    let dateMap = [];
+    let tempDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+    const monthNames = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agt", "Sep", "Okt", "Nov", "Des"];
+
+    while (tempDate <= endDate) {
+        const yyyy = tempDate.getFullYear();
+        const mm = String(tempDate.getMonth() + 1).padStart(2, '0');
+        const day = tempDate.getDate();
+        const mKey = `${yyyy}-${mm}`;
+
+        const daysInMonth = new Date(yyyy, parseInt(mm), 0).getDate();
+
+        dateLabels.push(`${day} ${monthNames[tempDate.getMonth()]}`);
+        dateMap.push({ mKey: mKey, day: day, daysInMonth: daysInMonth });
+
+        tempDate.setDate(tempDate.getDate() + 1);
+    }
+
+    currentChartData = {
+        sales: { mobile: new Array(dateMap.length).fill(0), fixed: new Array(dateMap.length).fill(0), labels: dateLabels },
+        interaksi: { mobile: new Array(dateMap.length).fill(0), fixed: new Array(dateMap.length).fill(0), labels: dateLabels },
+        ticket: { mobile: new Array(dateMap.length).fill(0), fixed: new Array(dateMap.length).fill(0), labels: dateLabels }
+    };
+
+    let agentSummary = {};
+
+    function aggregateMetric(metricType, dataMapObj) {
+        dateMap.forEach((dObj, idx) => {
+            const rows = dataMapObj[dObj.mKey];
+            if (!rows) return;
+
+            const mobBaseIndex = 6; 
+            const fixedBaseIndex = (dObj.daysInMonth === 30) ? 38 : 39;
+
+            rows.forEach(r => {
+                const agentSiad = getVal(r, 1).toLowerCase();  
+                const agentLogin = getVal(r, 2).toLowerCase(); 
+                const agentNama = getVal(r, 3).toLowerCase();  
+                const agentTl = getVal(r, 4).toLowerCase(); 
+                const agentSpv = getVal(r, 5).toLowerCase();
+
+                let isMatch = false;
+
+                if (role.includes("ADMIN")) {
+                    const matchSpv = (!adminSpvFilter || agentSpv === adminSpvFilter);
+                    const matchTl = (!adminTlFilter || agentTl === adminTlFilter);
+                    isMatch = matchSpv && matchTl;
+                }
+                else if (role === "AGENT") {
+                    isMatch = (agentSiad !== "" && agentSiad === currentUser.siad.toLowerCase()) ||
+                              (agentLogin !== "" && agentLogin === currentUser.login_id.toLowerCase()) ||
+                              (agentNama !== "" && agentNama === currentUser.nama.toLowerCase());
+                } 
+                else if (role.includes("TL") || role.includes("LEADER") || role.includes("SPV") || role.includes("SUPERVISOR")) {
+                    if (currentUser.teamMembers && currentUser.teamMembers.length > 0) {
+                        isMatch = currentUser.teamMembers.some(m => 
+                            (agentSiad !== "" && m.siad === agentSiad) ||
+                            (agentLogin !== "" && m.login === agentLogin) ||
+                            (agentNama !== "" && m.nama === agentNama)
+                        );
+                    }
+                    if (!isMatch && agentTl === currentUser.nama.toLowerCase()) {
+                        isMatch = true;
+                    }
+                } 
+                else {
+                    isMatch = true;
+                }
+
+                if (isMatch) {
+                    const mobVal = parseInt(getVal(r, mobBaseIndex + (dObj.day - 1))) || 0;
+                    const fixVal = parseInt(getVal(r, fixedBaseIndex + (dObj.day - 1))) || 0;
+
+                    currentChartData[metricType].mobile[idx] += mobVal;
+                    currentChartData[metricType].fixed[idx] += fixVal;
+
+                    const agentKey = agentSiad || agentNama;
+                    if (!agentSummary[agentKey]) {
+                        agentSummary[agentKey] = {
+                            siad: getVal(r, 1),
+                            nama: getVal(r, 3),
+                            salesMob: 0, salesFix: 0,
+                            intMob: 0, intFix: 0,
+                            tktMob: 0, tktFix: 0
+                        };
+                    }
+
+                    if (metricType === 'sales') {
+                        agentSummary[agentKey].salesMob += mobVal;
+                        agentSummary[agentKey].salesFix += fixVal;
+                    } else if (metricType === 'interaksi') {
+                        agentSummary[agentKey].intMob += mobVal;
+                        agentSummary[agentKey].intFix += fixVal;
+                    } else if (metricType === 'ticket') {
+                        agentSummary[agentKey].tktMob += mobVal;
+                        agentSummary[agentKey].tktFix += fixVal;
+                    }
+                }
+            });
+        });
+    }
+
+    aggregateMetric('sales', metricsDataMap.sales);
+    aggregateMetric('interaksi', metricsDataMap.interaksi);
+    aggregateMetric('ticket', metricsDataMap.ticket);
+
+    let totals = { salesMob: 0, salesFix: 0, intMob: 0, intFix: 0, tktMob: 0, tktFix: 0 };
+    
+    filteredAgentList = Object.values(agentSummary);
+
+    filteredAgentList.forEach(ag => {
+        totals.salesMob += ag.salesMob; totals.salesFix += ag.salesFix;
+        totals.intMob += ag.intMob; totals.intFix += ag.intFix;
+        totals.tktMob += ag.tktMob; totals.tktFix += ag.tktFix;
+    });
+
+    const totSales = totals.salesMob + totals.salesFix;
+    const totInt = totals.intMob + totals.intFix;
+    const totTkt = totals.tktMob + totals.tktFix;
+
+    let fcrPercentage = 0;
+    if (totInt > 0) {
+        fcrPercentage = ((totInt - totTkt) / totInt) * 100;
+    }
+
+    document.getElementById("statSales").innerText = totSales.toLocaleString("id-ID");
+    document.getElementById("statSalesDetail").innerText = `Mobile: ${totals.salesMob.toLocaleString("id-ID")} | Fixed: ${totals.salesFix.toLocaleString("id-ID")}`;
+
+    document.getElementById("statTotalInteraksi").innerText = totInt.toLocaleString("id-ID");
+    document.getElementById("statInteraksiDetail").innerText = `Mobile: ${totals.intMob.toLocaleString("id-ID")} | Fixed: ${totals.intFix.toLocaleString("id-ID")}`;
+
+    document.getElementById("statTotalTiket").innerText = totTkt.toLocaleString("id-ID");
+    document.getElementById("statTiketDetail").innerText = `Mobile: ${totals.tktMob.toLocaleString("id-ID")} | Fixed: ${totals.tktFix.toLocaleString("id-ID")}`;
+
+    document.getElementById("statFcr").innerText = `${fcrPercentage.toFixed(2)}%`;
+
+    currentPage = 1;
+    renderPaginatedTable();
+    renderChart(activeChartType);
+}
+
+function renderPaginatedTable() {
+    const tbody = document.getElementById("agentTableBody");
+    const searchVal = document.getElementById("searchInput").value.toLowerCase().trim();
+
+    let displayList = filteredAgentList.filter(ag => 
+        ag.nama.toLowerCase().includes(searchVal) || 
+        ag.siad.toLowerCase().includes(searchVal)
+    );
+
+    const totalItems = displayList.length;
+    const totalPages = Math.ceil(totalItems / pageSize) || 1;
+
+    if (currentPage < 1) currentPage = 1;
+    if (currentPage > totalPages) currentPage = totalPages;
+
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = Math.min(startIndex + pageSize, totalItems);
+    const pageData = displayList.slice(startIndex, endIndex);
+
+    if (pageData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-slate-400">Tidak ada data agent ditemukan.</td></tr>`;
+    } else {
+        let tbodyHtml = "";
+        pageData.forEach(ag => {
+            const totalInt = ag.intMob + ag.intFix;
+            const totalTkt = ag.tktMob + ag.tktFix;
+            const totalSales = ag.salesMob + ag.salesFix;
+            const agDataJson = JSON.stringify({ siad: ag.siad, nama: ag.nama }).replace(/"/g, '&quot;');
+
+            tbodyHtml += `
+                <tr class="hover:bg-slate-50 transition">
+                    <td class="p-4 font-semibold text-slate-800">${ag.nama}</td>
+                    <td class="p-4 text-slate-500">${ag.siad}</td>
+                    <td class="p-4 font-semibold text-slate-700">${totalInt.toLocaleString("id-ID")}</td>
+                    <td class="p-4 font-semibold text-slate-700">${totalTkt.toLocaleString("id-ID")}</td>
+                    <td class="p-4 font-semibold text-blue-600">${ag.salesMob.toLocaleString("id-ID")}</td>
+                    <td class="p-4 font-semibold text-red-600">${ag.salesFix.toLocaleString("id-ID")}</td>
+                    <td class="p-4 font-bold text-slate-800">${totalSales.toLocaleString("id-ID")}</td>
+                    <td class="p-4 text-center">
+                        <button onclick="openReportModal(${agDataJson})" title="Lihat Detail Report Agent" class="p-2 bg-slate-100 hover:bg-red-50 text-slate-500 hover:text-red-600 rounded-xl transition border border-slate-200 inline-flex items-center justify-center">
+                            <i data-lucide="file-text" class="w-4 h-4"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = tbodyHtml;
+    }
+
+    const pageStartCount = totalItems > 0 ? startIndex + 1 : 0;
+    document.getElementById("pageInfoText").innerText = `Menampilkan ${pageStartCount} - ${endIndex} dari ${totalItems} Agent`;
+    document.getElementById("pageNumberDisplay").innerText = `${currentPage} / ${totalPages}`;
+
+    document.getElementById("btnPrevPage").disabled = (currentPage <= 1);
+    document.getElementById("btnNextPage").disabled = (currentPage >= totalPages);
+
+    setTimeout(() => { lucide.createIcons(); }, 50);
+}
+
+function changePage(direction) {
+    currentPage += direction;
+    renderPaginatedTable();
+}
+
+function filterTableBySearch() {
+    currentPage = 1;
+    renderPaginatedTable();
+}
+
+async function openReportModal(agent) {
+    selectedAgentForModal = agent;
+    document.getElementById("modalAgentName").innerText = agent.nama;
+    document.getElementById("modalAgentSiad").innerText = `SIAD: ${agent.siad}`;
+    document.getElementById("reportModal").classList.remove("hidden");
+
+    selectedReportMonth = "2026-10";
+    activeModalTab = "summary";
+    updateModalTabUI();
+    updateModalMonthButtons();
+    await loadActiveModalContent();
+}
+
+function closeReportModal() {
+    if (ahtChart) {
+        ahtChart.destroy();
+        ahtChart = null;
+    }
+    document.getElementById("reportModal").classList.add("hidden");
+}
+
+function switchModalTab(tab) {
+    activeModalTab = tab;
+    updateModalTabUI();
+    return loadActiveModalContent();
+}
+
+function changeReportMonth(mKey) {
+    selectedReportMonth = mKey;
+    updateModalMonthButtons();
+    loadActiveModalContent();
+}
+
+function updateModalTabUI() {
+    const btnSummary = document.getElementById("btnTabSummary");
+    const btnAht = document.getElementById("btnTabAht");
+
+    if (activeModalTab === "summary") {
+        btnSummary.className = "px-3 py-1 text-xs font-bold rounded-lg transition bg-white text-slate-800 shadow-sm flex items-center gap-1";
+        btnAht.className = "px-3 py-1 text-xs font-bold rounded-lg transition text-slate-500 hover:text-slate-800 flex items-center gap-1";
+    } else {
+        btnAht.className = "px-3 py-1 text-xs font-bold rounded-lg transition bg-white text-slate-800 shadow-sm flex items-center gap-1";
+        btnSummary.className = "px-3 py-1 text-xs font-bold rounded-lg transition text-slate-500 hover:text-slate-800 flex items-center gap-1";
+    }
+}
+
+function updateModalMonthButtons() {
+    const btnSep = document.getElementById("btnModalSep");
+    const btnOkt = document.getElementById("btnModalOkt");
+
+    if (selectedReportMonth === "2026-09") {
+        btnSep.className = "px-2.5 py-1 text-xs font-bold rounded-lg transition bg-red-600 text-white shadow-sm";
+        btnOkt.className = "px-2.5 py-1 text-xs font-bold rounded-lg transition bg-white text-slate-600 border border-slate-200 hover:bg-slate-50";
+    } else {
+        btnOkt.className = "px-2.5 py-1 text-xs font-bold rounded-lg transition bg-red-600 text-white shadow-sm";
+        btnSep.className = "px-2.5 py-1 text-xs font-bold rounded-lg transition bg-white text-slate-600 border border-slate-200 hover:bg-slate-50";
+    }
+}
+
+async function loadActiveModalContent() {
+    if (ahtChart) {
+        ahtChart.destroy();
+        ahtChart = null;
+    }
+
+    if (activeModalTab === "summary") {
+        await loadAllReportsInOneView();
+    } else {
+        await loadAhtReportView();
+    }
+}
+
+async function loadAllReportsInOneView() {
+    const container = document.getElementById("modalReportContent");
+    container.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs flex justify-center items-center gap-2"><i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Memuat ringkasan report agen...</div>`;
+    setTimeout(() => { lucide.createIcons(); }, 10);
+
+    const monthUrls = CONFIG.MONTHLY_METRICS[selectedReportMonth];
+    if (!monthUrls) {
+        container.innerHTML = `<div class="text-center py-6 text-red-500 text-xs">Link data bulan ini belum tersedia.</div>`;
+        return;
+    }
+
+    const [fcrRows, salesRows, retensiRows] = await Promise.all([
+        fetchCsvData(monthUrls.fcr, 0),
+        fetchCsvData(monthUrls.sales_report, 0),
+        fetchCsvData(monthUrls.retensi_report, 0)
+    ]);
+
+    const targetSiad = (selectedAgentForModal.siad || "").toLowerCase().trim();
+    const targetNama = (selectedAgentForModal.nama || "").toLowerCase().trim();
+
+    const findAgentRow = (rows) => {
+        if (!rows || rows.length === 0) return null;
+        return rows.find(r => {
+            const s = getVal(r, 1).toLowerCase().trim();
+            const n = getVal(r, 3).toLowerCase().trim();
+            return (targetSiad !== "" && s === targetSiad) || 
+                   (targetNama !== "" && n === targetNama) ||
+                   (targetNama !== "" && n.includes(targetNama));
+        });
+    };
+
+    const fcrMatch = findAgentRow(fcrRows);
+    const salesMatch = findAgentRow(salesRows);
+    const retensiMatch = findAgentRow(retensiRows);
+
+    if (!fcrMatch && !salesMatch && !retensiMatch) {
+        container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">Data agent ini tidak ditemukan pada report bulan ${selectedReportMonth === "2026-09" ? "September" : "Oktober"}.</div>`;
+        return;
+    }
+
+    const intMobTot = fcrMatch ? getVal(fcrMatch, 11) || "0" : "0";  
+    const intFixTot = fcrMatch ? getVal(fcrMatch, 17) || "0" : "0";  
+    const intRecip  = fcrMatch ? getVal(fcrMatch, 18) || "0" : "0";  
+    const tktMobTot = fcrMatch ? getVal(fcrMatch, 22) || "0" : "0";  
+    const tktFixTot = fcrMatch ? getVal(fcrMatch, 26) || "0" : "0";  
+
+    const fcrMobK   = fcrMatch ? getVal(fcrMatch, 28) || "0%" : "0%"; 
+    const fcrMobI   = fcrMatch ? getVal(fcrMatch, 29) || "0%" : "0%"; 
+    const fcrMobP   = fcrMatch ? getVal(fcrMatch, 30) || "0%" : "0%"; 
+    const fcrMobTot = fcrMatch ? getVal(fcrMatch, 31) || "0%" : "0%"; 
+
+    const fcrFixK   = fcrMatch ? getVal(fcrMatch, 32) || "0%" : "0%"; 
+    const fcrFixI   = fcrMatch ? getVal(fcrMatch, 33) || "0%" : "0%"; 
+    const fcrFixP   = fcrMatch ? getVal(fcrMatch, 34) || "0%" : "0%"; 
+    const fcrFixTot = fcrMatch ? getVal(fcrMatch, 35) || "0%" : "0%"; 
+    const fcrFixRec = fcrMatch ? getVal(fcrMatch, 36) || "0%" : "0%"; 
+
+    const fcrAllVal = fcrMatch ? getVal(fcrMatch, 37) || "0%" : "0%";
+
+    const salesMob = salesMatch ? getVal(salesMatch, 6) || "0" : "0";  
+    const salesFix = salesMatch ? getVal(salesMatch, 7) || "0" : "0";  
+    const pctMob   = salesMatch ? getVal(salesMatch, 10) || "0%" : "0%"; 
+    const pctFix   = salesMatch ? getVal(salesMatch, 11) || "0%" : "0%"; 
+
+    const retensiVal    = retensiMatch ? getVal(retensiMatch, 6) || "0" : "0";  
+    const kipRetensiVal = retensiMatch ? getVal(retensiMatch, 7) || "0" : "0";  
+    const pctRetensiVal = retensiMatch ? getVal(retensiMatch, 8) || "0%" : "0%"; 
+
+    container.innerHTML = `
+        <div class="space-y-3">
+            <div class="flex items-center gap-2 text-slate-800 font-bold border-b border-slate-100 pb-2">
+                <i data-lucide="shield-check" class="w-4 h-4 text-emerald-600"></i>
+                <span>Report First Contact Resolution (FCR)</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <div class="bg-blue-50/50 p-3 rounded-xl border border-blue-100 space-y-1">
+                    <h4 class="font-bold text-blue-700 flex items-center gap-1.5">Interaksi</h4>
+                    <div class="flex justify-between border-b border-blue-100/60 pb-1">
+                        <span class="text-slate-600">Total Interaksi Mobile:</span>
+                        <span class="font-bold text-slate-800">${intMobTot}</span>
+                    </div>
+                    <div class="flex justify-between border-b border-blue-100/60 pb-1">
+                        <span class="text-slate-600">Total Interaksi Fixed:</span>
+                        <span class="font-bold text-slate-800">${intFixTot}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-600">Total Interaksi Reciprocal:</span>
+                        <span class="font-bold text-slate-800">${intRecip}</span>
+                    </div>
+                </div>
+
+                <div class="bg-red-50/50 p-3 rounded-xl border border-red-100 space-y-1">
+                    <h4 class="font-bold text-red-700 flex items-center gap-1.5">Tiket KIP</h4>
+                    <div class="flex justify-between border-b border-red-100/60 pb-1">
+                        <span class="text-slate-600">Total Tiket KIP Mobile:</span>
+                        <span class="font-bold text-slate-800">${tktMobTot}</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-600">Total Tiket KIP Fixed:</span>
+                        <span class="font-bold text-slate-800">${tktFixTot}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1.5">
+                    <div class="flex justify-between items-center border-b border-slate-200 pb-1">
+                        <span class="font-bold text-slate-700">%FCR Mobile</span>
+                        <span class="font-bold text-blue-600">${fcrMobTot}</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-1 pt-0.5 text-center">
+                        <div class="bg-white p-1 rounded-lg border border-slate-100">
+                            <span class="text-slate-400 block text-[9px]">K</span>
+                            <span class="font-bold text-slate-700">${fcrMobK}</span>
+                        </div>
+                        <div class="bg-white p-1 rounded-lg border border-slate-100">
+                            <span class="text-slate-400 block text-[9px]">I</span>
+                            <span class="font-bold text-slate-700">${fcrMobI}</span>
+                        </div>
+                        <div class="bg-white p-1 rounded-lg border border-slate-100">
+                            <span class="text-slate-400 block text-[9px]">P</span>
+                            <span class="font-bold text-slate-700">${fcrMobP}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1.5">
+                    <div class="flex justify-between items-center border-b border-slate-200 pb-1">
+                        <span class="font-bold text-slate-700">%FCR Fixed</span>
+                        <span class="font-bold text-red-600">${fcrFixTot}</span>
+                    </div>
+                    <div class="grid grid-cols-4 gap-1 pt-0.5 text-center">
+                        <div class="bg-white p-1 rounded-lg border border-slate-100">
+                            <span class="text-slate-400 block text-[9px]">K</span>
+                            <span class="font-bold text-slate-700">${fcrFixK}</span>
+                        </div>
+                        <div class="bg-white p-1 rounded-lg border border-slate-100">
+                            <span class="text-slate-400 block text-[9px]">I</span>
+                            <span class="font-bold text-slate-700">${fcrFixI}</span>
+                        </div>
+                        <div class="bg-white p-1 rounded-lg border border-slate-100">
+                            <span class="text-slate-400 block text-[9px]">P</span>
+                            <span class="font-bold text-slate-700">${fcrFixP}</span>
+                        </div>
+                        <div class="bg-white p-1 rounded-lg border border-slate-100">
+                            <span class="text-slate-400 block text-[9px]">Recip</span>
+                            <span class="font-bold text-slate-700">${fcrFixRec}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-emerald-50 p-2.5 rounded-xl border border-emerald-200 flex justify-between items-center text-xs">
+                <span class="font-bold text-emerald-800 flex items-center gap-1.5">
+                    <i data-lucide="shield-check" class="w-4 h-4 text-emerald-600"></i> %FCR ALL
+                </span>
+                <span class="text-sm font-extrabold text-emerald-700">${fcrAllVal}</span>
+            </div>
+        </div>
+
+        <div class="space-y-2 pt-2">
+            <div class="flex items-center gap-2 text-slate-800 font-bold border-b border-slate-100 pb-1">
+                <i data-lucide="circle-dollar-sign" class="w-4 h-4 text-amber-600"></i>
+                <span>Report Sales</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1">
+                    <div class="flex justify-between items-center border-b border-slate-200 pb-1">
+                        <h4 class="font-bold text-blue-700 flex items-center gap-1">
+                            <i data-lucide="smartphone" class="w-3.5 h-3.5 text-blue-600"></i> Sales Mobile
+                        </h4>
+                        <span class="font-bold text-sm text-slate-800">${salesMob}</span>
+                    </div>
+                    <div class="flex justify-between items-center bg-white p-1.5 rounded-lg border border-slate-100">
+                        <span class="text-slate-500 font-medium">% Sales Mobile:</span>
+                        <span class="font-extrabold text-blue-600">${pctMob}</span>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-1">
+                    <div class="flex justify-between items-center border-b border-slate-200 pb-1">
+                        <h4 class="font-bold text-red-700 flex items-center gap-1">
+                            <i data-lucide="wifi" class="w-3.5 h-3.5 text-red-600"></i> Sales Fixed
+                        </h4>
+                        <span class="font-bold text-sm text-slate-800">${salesFix}</span>
+                    </div>
+                    <div class="flex justify-between items-center bg-white p-1.5 rounded-lg border border-slate-100">
+                        <span class="text-slate-500 font-medium">% Sales Fixed:</span>
+                        <span class="font-extrabold text-red-600">${pctFix}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="space-y-2 pt-2">
+            <div class="flex items-center gap-2 text-slate-800 font-bold border-b border-slate-100 pb-1">
+                <i data-lucide="user-check" class="w-4 h-4 text-purple-600"></i>
+                <span>Report Retensi</span>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3 text-xs">
+                <div class="bg-purple-50/50 p-2.5 rounded-xl border border-purple-100 text-center">
+                    <span class="text-slate-500 block text-[9px] font-semibold uppercase">Retensi</span>
+                    <span class="text-sm font-extrabold text-purple-700 mt-0.5 block">${retensiVal}</span>
+                </div>
+                <div class="bg-purple-50/50 p-2.5 rounded-xl border border-purple-100 text-center">
+                    <span class="text-slate-500 block text-[9px] font-semibold uppercase">KIP Retensi</span>
+                    <span class="text-sm font-extrabold text-purple-700 mt-0.5 block">${kipRetensiVal}</span>
+                </div>
+                <div class="bg-purple-50/50 p-2.5 rounded-xl border border-purple-100 text-center">
+                    <span class="text-slate-500 block text-[9px] font-semibold uppercase">% Retensi</span>
+                    <span class="text-sm font-extrabold text-purple-700 mt-0.5 block">${pctRetensiVal}</span>
+                </div>
+            </div>
+        </div>
+    `;
+
+    setTimeout(() => { lucide.createIcons(); }, 50);
+}
+
+async function loadAhtReportView() {
+    const container = document.getElementById("modalReportContent");
+    container.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs flex justify-center items-center gap-2"><i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Memuat report AHT...</div>`;
+    setTimeout(() => { lucide.createIcons(); }, 10);
+
+    const ahtUrl = CONFIG.MONTHLY_METRICS[selectedReportMonth]?.aht_report;
+    if (!ahtUrl) {
+        container.innerHTML = `<div class="text-center py-6 text-red-500 text-xs">Link data AHT bulan ini belum tersedia.</div>`;
+        return;
+    }
+
+    const ahtRows = await fetchCsvData(ahtUrl, 0);
+    if (!ahtRows || ahtRows.length === 0) {
+        container.innerHTML = `<div class="text-center py-6 text-red-500 text-xs">Gagal mengunduh data AHT bulan ini.</div>`;
+        return;
+    }
+
+    const targetSiad = (selectedAgentForModal.siad || "").toLowerCase().trim();
+    const targetNama = (selectedAgentForModal.nama || "").toLowerCase().trim();
+
+    const matchRow = ahtRows.find(r => {
+        const s = getVal(r, 1).toLowerCase().trim();
+        const n = getVal(r, 3).toLowerCase().trim();
+        return (targetSiad !== "" && s === targetSiad) || 
+               (targetNama !== "" && n === targetNama) ||
+               (targetNama !== "" && n.includes(targetNama));
+    });
+
+    if (!matchRow) {
+        container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">Data agent ini tidak ditemukan pada report AHT bulan ${selectedReportMonth === "2026-09" ? "September" : "Oktober"}.</div>`;
+        return;
+    }
+
+    const rawTotalAht = getVal(matchRow, 37);
+    const totalAhtFormatted = formatAhtValue(rawTotalAht);
+
+    const [year, month] = selectedReportMonth.split("-").map(Number);
+    const daysInSelectedMonth = new Date(year, month, 0).getDate();
+
+    let dailyGridHtml = "";
+    let chartLabels = [];
+    let chartSecondsData = [];
+    let chartFormattedData = [];
+
+    for (let d = 1; d <= daysInSelectedMonth; d++) {
+        const colIdx = 5 + d;
+        const rawVal = getVal(matchRow, colIdx);
+        const formattedVal = formatAhtValue(rawVal);
+        const secondsVal = parseAhtToSeconds(rawVal);
+        
+        chartLabels.push(`Tgl ${d}`);
+        chartSecondsData.push(secondsVal);
+        chartFormattedData.push(formattedVal);
+
+        dailyGridHtml += `
+            <div class="bg-slate-50 p-1.5 rounded-lg border border-slate-200 text-center">
+                <span class="text-[9px] text-slate-400 font-bold block uppercase">TGL ${d}</span>
+                <span class="text-[11px] font-extrabold text-slate-800">${formattedVal}</span>
+            </div>
+        `;
+    }
+
+    const monthNameText = (selectedReportMonth === "2026-09") ? "September 2026 (30 Hari)" : "Oktober 2026 (31 Hari)";
+
+    container.innerHTML = `
+        <div class="space-y-4">
+            <div class="bg-red-50 p-3 rounded-xl border border-red-200 flex justify-between items-center text-xs">
+                <div class="flex items-center gap-2">
+                    <div class="p-1.5 bg-red-600 text-white rounded-lg">
+                        <i data-lucide="clock" class="w-4 h-4"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-slate-800 text-xs">Average Handling Time (AHT) Total</h4>
+                        <p class="text-slate-500 text-[10px]">Akumulasi performa AHT bulanan agen</p>
+                    </div>
+                </div>
+                <span class="text-lg font-black text-red-600 bg-white px-3 py-1 rounded-lg border border-red-100 shadow-sm">${totalAhtFormatted}</span>
+            </div>
+
+            <div class="bg-white p-3 rounded-xl border border-slate-200 space-y-1">
+                <div class="flex justify-between items-center">
+                    <h4 class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <i data-lucide="line-chart" class="w-3.5 h-3.5 text-red-600"></i> Grafik Tren AHT Harian
+                    </h4>
+                    <span class="text-[9px] font-bold text-slate-400 uppercase">Waktu (Detik)</span>
+                </div>
+                <div class="relative h-40 w-full">
+                    <canvas id="ahtChartCanvas"></canvas>
+                </div>
+            </div>
+
+            <div>
+                <div class="flex justify-between items-center mb-1.5">
+                    <h4 class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i> Rincian AHT Harian
+                    </h4>
+                    <span class="text-[10px] font-semibold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">${monthNameText}</span>
+                </div>
+                <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-7 gap-1.5">
+                    ${dailyGridHtml}
+                </div>
+            </div>
+        </div>
+    `;
+
+    setTimeout(() => { 
+        lucide.createIcons();
+        renderAhtChart(chartLabels, chartSecondsData, chartFormattedData);
+    }, 50);
+}
+
+function renderAhtChart(labels, secondsData, formattedData) {
+    const canvasElem = document.getElementById("ahtChartCanvas");
+    if (!canvasElem) return;
+
+    const ctx = canvasElem.getContext("2d");
+    if (ahtChart) ahtChart.destroy();
+
+    ahtChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'AHT (Detik)',
+                data: secondsData,
+                borderColor: '#dc2626',
+                backgroundColor: 'rgba(220, 38, 38, 0.08)',
+                borderWidth: 2,
+                tension: 0.3,
+                fill: true,
+                pointRadius: 2.5,
+                pointBackgroundColor: '#dc2626',
+                pointHoverRadius: 5
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    mode: 'index', intersect: false, backgroundColor: '#1e293b',
+                    titleFont: { size: 10, weight: 'bold' }, bodyFont: { size: 10 },
+                    callbacks: {
+                        label: function(context) {
+                            const idx = context.dataIndex;
+                            return `Durasi AHT: ${formattedData[idx] || "-"} (${context.raw}s)`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { display: false }, ticks: { font: { size: 9 } } },
+                y: { beginAtZero: true, ticks: { font: { size: 9 }, callback: (v) => v + 's' } }
+            }
+        }
+    });
+}
+
+function switchChartTab(type) {
+    activeChartType = type;
+    const btnSales = document.getElementById("btnTabSales");
+    const btnInteraksi = document.getElementById("btnTabInteraksi");
+    const btnTicket = document.getElementById("btnTabTicket");
+    const titleElem = document.getElementById("chartTitle");
+
+    [btnSales, btnInteraksi, btnTicket].forEach(b => {
+        b.className = "px-3 py-1.5 text-xs font-bold rounded-lg transition text-slate-500 hover:text-slate-800";
+    });
+
+    if (type === 'sales') {
+        btnSales.className = "px-3 py-1.5 text-xs font-bold rounded-lg transition bg-white text-red-600 shadow-sm";
+        titleElem.innerText = "Grafik Tren Penjualan Harian (Daily Sales)";
+    } else if (type === 'interaksi') {
+        btnInteraksi.className = "px-3 py-1.5 text-xs font-bold rounded-lg transition bg-white text-red-600 shadow-sm";
+        titleElem.innerText = "Grafik Tren Interaksi Harian (Daily Interaction)";
+    } else if (type === 'ticket') {
+        btnTicket.className = "px-3 py-1.5 text-xs font-bold rounded-lg transition bg-white text-red-600 shadow-sm";
+        titleElem.innerText = "Grafik Tren Penanganan Tiket Harian (Daily Ticket)";
+    }
+
+    renderChart(type);
+}
+
+function renderChart(type) {
+    const ctx = document.getElementById("mainChartCanvas").getContext("2d");
+    const dataObj = currentChartData[type];
+
+    if (mainChart) mainChart.destroy();
+
+    mainChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: dataObj.labels,
+            datasets: [
+                {
+                    label: 'Mobile', data: dataObj.mobile,
+                    borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                    borderWidth: 2.5, tension: 0.3, fill: true, pointRadius: 3
+                },
+                {
+                    label: 'Fixed', data: dataObj.fixed,
+                    borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.08)',
+                    borderWidth: 2.5, tension: 0.3, fill: true, pointRadius: 3
+                }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: { mode: 'index', intersect: false, backgroundColor: '#1e293b' }
+            },
+            scales: {
+                x: { grid: { display: false }, ticks: { font: { size: 11, weight: '500' } } },
+                y: { beginAtZero: true, ticks: { precision: 0, font: { size: 10 } } }
+            }
+        }
+    });
+}
