@@ -54,6 +54,7 @@
         };
         let mainChart = null; 
         let ahtChart = null; 
+        let pdfAhtChart = null;
         let selectedAgentForModal = null;
         let selectedReportMonth = "2026-10";
         let activeModalTab = "summary"; 
@@ -376,7 +377,7 @@
             </div>
 
             <!-- Modal Content Area -->
-            <div class="p-6" id="modalPrintArea">
+            <div class="p-6">
                 <div id="modalReportContent">
                     <div class="text-center py-6 text-slate-400 text-xs">Memuat data report...</div>
                 </div>
@@ -899,23 +900,351 @@
             renderPaginatedTable();
         }
 
+        // ==========================================
         // FUNGSI EXPORT PDF KONDISI 1: REPORT AGENT
-        function exportAgentPdf() {
-            const element = document.getElementById("modalPrintArea");
-            const agentName = selectedAgentForModal ? selectedAgentForModal.nama : "Agent";
+        // ==========================================
+        async function exportAgentPdf() {
+            if (!selectedAgentForModal) return;
 
-            const opt = {
-                margin:       [10, 10, 10, 10],
-                filename:     `Report (${agentName}).pdf`,
-                image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true },
-                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+            const currentUser = JSON.parse(localStorage.getItem("active_user"));
+            const monthText = (selectedReportMonth === "2026-09") ? "September 2026" : "Oktober 2026";
+            const dateNow = new Date().toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' });
+
+            const monthUrls = CONFIG.MONTHLY_METRICS[selectedReportMonth];
+            if (!monthUrls) return;
+
+            // Fetch data lengkap FCR, Sales, Retensi & AHT khusus bulan yang dipilih
+            const [fcrRows, salesRows, retensiRows, ahtRows] = await Promise.all([
+                fetchCsvData(monthUrls.fcr, 0),
+                fetchCsvData(monthUrls.sales_report, 0),
+                fetchCsvData(monthUrls.retensi_report, 0),
+                fetchCsvData(monthUrls.aht_report, 0)
+            ]);
+
+            const targetSiad = (selectedAgentForModal.siad || "").toLowerCase().trim();
+            const targetNama = (selectedAgentForModal.nama || "").toLowerCase().trim();
+
+            const findRow = (rows) => {
+                if (!rows) return null;
+                return rows.find(r => {
+                    const s = getVal(r, 1).toLowerCase().trim();
+                    const n = getVal(r, 3).toLowerCase().trim();
+                    return (targetSiad !== "" && s === targetSiad) || 
+                           (targetNama !== "" && n === targetNama) ||
+                           (targetNama !== "" && n.includes(targetNama));
+                });
             };
 
-            html2pdf().set(opt).from(element).save();
+            const fcrMatch = findRow(fcrRows);
+            const salesMatch = findRow(salesRows);
+            const retensiMatch = findRow(retensiRows);
+            const ahtMatch = findRow(ahtRows);
+
+            // Parsing Data Page 1 (Summary)
+            const intMobTot = fcrMatch ? getVal(fcrMatch, 11) || "0" : "0";
+            const intFixTot = fcrMatch ? getVal(fcrMatch, 17) || "0" : "0";
+            const intRecip  = fcrMatch ? getVal(fcrMatch, 18) || "0" : "0";
+            const tktMobTot = fcrMatch ? getVal(fcrMatch, 22) || "0" : "0";
+            const tktFixTot = fcrMatch ? getVal(fcrMatch, 26) || "0" : "0";
+
+            const fcrMobK   = fcrMatch ? getVal(fcrMatch, 28) || "0%" : "0%";
+            const fcrMobI   = fcrMatch ? getVal(fcrMatch, 29) || "0%" : "0%";
+            const fcrMobP   = fcrMatch ? getVal(fcrMatch, 30) || "0%" : "0%";
+            const fcrMobTot = fcrMatch ? getVal(fcrMatch, 31) || "0%" : "0%";
+
+            const fcrFixK   = fcrMatch ? getVal(fcrMatch, 32) || "0%" : "0%";
+            const fcrFixI   = fcrMatch ? getVal(fcrMatch, 33) || "0%" : "0%";
+            const fcrFixP   = fcrMatch ? getVal(fcrMatch, 34) || "0%" : "0%";
+            const fcrFixTot = fcrMatch ? getVal(fcrMatch, 35) || "0%" : "0%";
+            const fcrFixRec = fcrMatch ? getVal(fcrMatch, 36) || "0%" : "0%";
+
+            const fcrAllVal = fcrMatch ? getVal(fcrMatch, 37) || "0%" : "0%";
+
+            const salesMob = salesMatch ? getVal(salesMatch, 6) || "0" : "0";
+            const salesFix = salesMatch ? getVal(salesMatch, 7) || "0" : "0";
+            const pctMob   = salesMatch ? getVal(salesMatch, 10) || "0%" : "0%";
+            const pctFix   = salesMatch ? getVal(salesMatch, 11) || "0%" : "0%";
+
+            const retensiVal    = retensiMatch ? getVal(retensiMatch, 6) || "0" : "0";
+            const kipRetensiVal = retensiMatch ? getVal(retensiMatch, 7) || "0" : "0";
+            const pctRetensiVal = retensiMatch ? getVal(retensiMatch, 8) || "0%" : "0%";
+
+            // Parsing Data Page 2 (AHT)
+            const rawTotalAht = ahtMatch ? getVal(ahtMatch, 37) : "";
+            const totalAhtFormatted = formatAhtValue(rawTotalAht);
+
+            const [year, month] = selectedReportMonth.split("-").map(Number);
+            const daysInSelectedMonth = new Date(year, month, 0).getDate();
+
+            let pdfAhtLabels = [];
+            let pdfAhtSeconds = [];
+            let dailyGridHtml = "";
+
+            for (let d = 1; d <= daysInSelectedMonth; d++) {
+                const colIdx = 5 + d;
+                const rawVal = ahtMatch ? getVal(ahtMatch, colIdx) : "";
+                const formattedVal = formatAhtValue(rawVal);
+                const secondsVal = parseAhtToSeconds(rawVal);
+
+                pdfAhtLabels.push(`Tgl ${d}`);
+                pdfAhtSeconds.push(secondsVal);
+
+                dailyGridHtml += `
+                    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px; text-align: center;">
+                        <span style="font-size: 8px; color: #94a3b8; font-weight: bold; display: block;">TGL ${d}</span>
+                        <span style="font-size: 10px; font-weight: bold; color: #0f172a;">${formattedVal}</span>
+                    </div>
+                `;
+            }
+
+            // BUAT DOM WRAPPER KHUSUS PDF
+            const printContainer = document.createElement("div");
+            printContainer.style.width = "100%";
+            printContainer.style.backgroundColor = "#ffffff";
+            printContainer.style.color = "#1e293b";
+            printContainer.style.fontFamily = "sans-serif";
+
+            printContainer.innerHTML = `
+                <!-- ==================== HALAMAN 1: RINGKASAN ==================== -->
+                <div style="padding: 24px; min-height: 1000px; box-sizing: border-box; position: relative;">
+                    <!-- HEADER DOKUMEN -->
+                    <div style="border-bottom: 2px solid #dc2626; padding-bottom: 10px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end;">
+                        <div>
+                            <h1 style="font-size: 18px; font-weight: 800; color: #dc2626; margin: 0; tracking-tight">KPI MONITORING PORTAL</h1>
+                            <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Agent Performance Evaluation & Analytics Report</p>
+                        </div>
+                        <div style="text-align: right; font-size: 10px; color: #64748b;">
+                            <p style="margin: 0;">Tanggal Cetak: <b>${dateNow}</b></p>
+                            <p style="margin: 2px 0 0 0;">Periode Laporan: <b style="color: #dc2626;">${monthText}</b></p>
+                        </div>
+                    </div>
+
+                    <!-- METADATA AGENT -->
+                    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; display: flex; justify-content: space-between; font-size: 11px;">
+                        <div>
+                            <p style="margin: 0 0 4px 0;">Nama Agent: <b style="color: #0f172a; font-size: 12px;">${selectedAgentForModal.nama}</b></p>
+                            <p style="margin: 0;">SIAD Agent: <b style="color: #0f172a;">${selectedAgentForModal.siad || "-"}</b></p>
+                        </div>
+                        <div style="text-align: right;">
+                            <p style="margin: 0 0 4px 0;">Team Leader: <b>${currentUser ? currentUser.tl || currentUser.nama : "-"}</b></p>
+                            <p style="margin: 0;">Supervisor: <b>${currentUser ? currentUser.spv || "-" : "-"}</b></p>
+                        </div>
+                    </div>
+
+                    <!-- PAGE 1 TITLE -->
+                    <div style="background-color: #f1f5f9; padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; color: #334155; margin-bottom: 16px;">
+                        HALAMAN 1: RINGKASAN PERFORMANCE (FCR, SALES & RETENSI)
+                    </div>
+
+                    <!-- REPORT FCR -->
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="font-size: 12px; font-weight: bold; color: #0f172a; margin: 0 0 8px 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">
+                            1. First Contact Resolution (FCR)
+                        </h3>
+                        
+                        <div style="display: flex; gap: 12px; margin-bottom: 12px; font-size: 11px;">
+                            <div style="flex: 1; background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px;">
+                                <p style="font-weight: bold; color: #1d4ed8; margin: 0 0 6px 0;">Detail Interaksi</p>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>Interaksi Mobile:</span><b>${intMobTot}</b></div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>Interaksi Fixed:</span><b>${intFixTot}</b></div>
+                                <div style="display: flex; justify-content: space-between;"><span>Interaksi Reciprocal:</span><b>${intRecip}</b></div>
+                            </div>
+
+                            <div style="flex: 1; background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px;">
+                                <p style="font-weight: bold; color: #b91c1c; margin: 0 0 6px 0;">Detail Tiket KIP</p>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>Tiket KIP Mobile:</span><b>${tktMobTot}</b></div>
+                                <div style="display: flex; justify-content: space-between;"><span>Tiket KIP Fixed:</span><b>${tktFixTot}</b></div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 12px; margin-bottom: 12px; font-size: 11px;">
+                            <div style="flex: 1; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
+                                <div style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 6px;">
+                                    <span>%FCR Mobile</span><span style="color: #2563eb;">${fcrMobTot}</span>
+                                </div>
+                                <div style="display: flex; gap: 6px; text-align: center; font-size: 10px;">
+                                    <div style="flex:1; background:#fff; padding:4px; border:1px solid #e2e8f0; border-radius:4px;">K: <b>${fcrMobK}</b></div>
+                                    <div style="flex:1; background:#fff; padding:4px; border:1px solid #e2e8f0; border-radius:4px;">I: <b>${fcrMobI}</b></div>
+                                    <div style="flex:1; background:#fff; padding:4px; border:1px solid #e2e8f0; border-radius:4px;">P: <b>${fcrMobP}</b></div>
+                                </div>
+                            </div>
+
+                            <div style="flex: 1; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
+                                <div style="display: flex; justify-content: space-between; font-weight: bold; margin-bottom: 6px;">
+                                    <span>%FCR Fixed</span><span style="color: #dc2626;">${fcrFixTot}</span>
+                                </div>
+                                <div style="display: flex; gap: 4px; text-align: center; font-size: 10px;">
+                                    <div style="flex:1; background:#fff; padding:4px; border:1px solid #e2e8f0; border-radius:4px;">K: <b>${fcrFixK}</b></div>
+                                    <div style="flex:1; background:#fff; padding:4px; border:1px solid #e2e8f0; border-radius:4px;">I: <b>${fcrFixI}</b></div>
+                                    <div style="flex:1; background:#fff; padding:4px; border:1px solid #e2e8f0; border-radius:4px;">P: <b>${fcrFixP}</b></div>
+                                    <div style="flex:1; background:#fff; padding:4px; border:1px solid #e2e8f0; border-radius:4px;">Rec: <b>${fcrFixRec}</b></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="background-color: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 11px; font-weight: bold; color: #065f46;">TOTAL %FCR ALL</span>
+                            <span style="font-size: 16px; font-weight: 800; color: #047857;">${fcrAllVal}</span>
+                        </div>
+                    </div>
+
+                    <!-- REPORT SALES -->
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="font-size: 12px; font-weight: bold; color: #0f172a; margin: 0 0 8px 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">
+                            2. Report Sales
+                        </h3>
+                        <div style="display: flex; gap: 12px; font-size: 11px;">
+                            <div style="flex: 1; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                                    <span style="font-weight: bold; color: #1d4ed8;">Sales Mobile:</span>
+                                    <b style="font-size: 13px;">${salesMob}</b>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; background: #fff; padding: 6px; border-radius: 6px; border: 1px solid #f1f5f9;">
+                                    <span>Pencapaian % Mobile:</span><b style="color: #2563eb;">${pctMob}</b>
+                                </div>
+                            </div>
+
+                            <div style="flex: 1; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                                    <span style="font-weight: bold; color: #b91c1c;">Sales Fixed:</span>
+                                    <b style="font-size: 13px;">${salesFix}</b>
+                                </div>
+                                <div style="display: flex; justify-content: space-between; background: #fff; padding: 6px; border-radius: 6px; border: 1px solid #f1f5f9;">
+                                    <span>Pencapaian % Fixed:</span><b style="color: #dc2626;">${pctFix}</b>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- REPORT RETENSI -->
+                    <div>
+                        <h3 style="font-size: 12px; font-weight: bold; color: #0f172a; margin: 0 0 8px 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">
+                            3. Report Retensi
+                        </h3>
+                        <div style="display: flex; gap: 12px; text-align: center; font-size: 11px;">
+                            <div style="flex: 1; background-color: #faf5ff; border: 1px solid #e9d5ff; border-radius: 8px; padding: 10px;">
+                                <span style="color: #6b21a8; font-size: 10px; display: block; font-weight: bold;">TOTAL RETENSI</span>
+                                <b style="font-size: 14px; color: #7e22ce;">${retensiVal}</b>
+                            </div>
+                            <div style="flex: 1; background-color: #faf5ff; border: 1px solid #e9d5ff; border-radius: 8px; padding: 10px;">
+                                <span style="color: #6b21a8; font-size: 10px; display: block; font-weight: bold;">KIP RETENSI</span>
+                                <b style="font-size: 14px; color: #7e22ce;">${kipRetensiVal}</b>
+                            </div>
+                            <div style="flex: 1; background-color: #faf5ff; border: 1px solid #e9d5ff; border-radius: 8px; padding: 10px;">
+                                <span style="color: #6b21a8; font-size: 10px; display: block; font-weight: bold;">% RETENSI</span>
+                                <b style="font-size: 14px; color: #7e22ce;">${pctRetensiVal}</b>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BREAKER HALAMAN MANUAL UNTUK HTML2PDF -->
+                <div style="page-break-before: always;"></div>
+
+                <!-- ==================== HALAMAN 2: REPORT AHT ==================== -->
+                <div style="padding: 24px; min-height: 1000px; box-sizing: border-box; position: relative;">
+                    <!-- HEADER DOKUMEN HALAMAN 2 -->
+                    <div style="border-bottom: 2px solid #dc2626; padding-bottom: 10px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: flex-end;">
+                        <div>
+                            <h1 style="font-size: 18px; font-weight: 800; color: #dc2626; margin: 0;">KPI MONITORING PORTAL</h1>
+                            <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Average Handling Time (AHT) Detailed Report</p>
+                        </div>
+                        <div style="text-align: right; font-size: 10px; color: #64748b;">
+                            <p style="margin: 0;">Agent: <b>${selectedAgentForModal.nama}</b></p>
+                            <p style="margin: 2px 0 0 0;">Periode: <b style="color: #dc2626;">${monthText}</b></p>
+                        </div>
+                    </div>
+
+                    <!-- PAGE 2 TITLE -->
+                    <div style="background-color: #f1f5f9; padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; color: #334155; margin-bottom: 16px;">
+                        HALAMAN 2: DETAIL AVERAGE HANDLING TIME (AHT) HARIAN
+                    </div>
+
+                    <!-- SUMMARY BADGE AHT -->
+                    <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <h4 style="margin: 0; font-size: 13px; font-weight: bold; color: #991b1b;">Average Handling Time (AHT) Akumulasi</h4>
+                            <p style="margin: 2px 0 0 0; font-size: 10px; color: #7f1d1d;">Rata-rata durasi penanganan panggil agen bulan ini</p>
+                        </div>
+                        <span style="font-size: 18px; font-weight: 900; color: #dc2626; background: #fff; padding: 6px 14px; border-radius: 8px; border: 1px solid #fca5a5;">
+                            ${totalAhtFormatted}
+                        </span>
+                    </div>
+
+                    <!-- GRAFIK AHT FOR PDF -->
+                    <div style="border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px; margin-bottom: 16px;">
+                        <h4 style="margin: 0 0 8px 0; font-size: 11px; font-weight: bold; color: #334155;">Grafik Tren Durasi AHT Harian (Detik)</h4>
+                        <div style="height: 220px; width: 100%;">
+                            <canvas id="pdfAhtCanvas"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- RINCIAN TABLE HARIAN -->
+                    <div>
+                        <h4 style="margin: 0 0 8px 0; font-size: 11px; font-weight: bold; color: #334155;">Matrix Durasi AHT Per-Tanggal (1 s/d ${daysInSelectedMonth})</h4>
+                        <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;">
+                            ${dailyGridHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Tempelkan sementara ke DOM tubuh dokumen (secara tersembunyi/di luar layar)
+            printContainer.style.position = "absolute";
+            printContainer.style.left = "-9999px";
+            printContainer.style.top = "-9999px";
+            printContainer.style.width = "794px"; // Lebar Standar A4 Pixel pada 96DPI
+            document.body.appendChild(printContainer);
+
+            // Render grafik Chart.js khusus untuk canvas PDF Halaman 2
+            const pdfCtx = printContainer.querySelector("#pdfAhtCanvas").getContext("2d");
+            pdfAhtChart = new Chart(pdfCtx, {
+                type: 'line',
+                data: {
+                    labels: pdfAhtLabels,
+                    datasets: [{
+                        data: pdfAhtSeconds,
+                        borderColor: '#dc2626',
+                        backgroundColor: 'rgba(220, 38, 38, 0.08)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false, // Matikan animasi agar instan di-render ke gambar
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { font: { size: 8 } } },
+                        y: { beginAtZero: true, ticks: { font: { size: 8 } } }
+                    }
+                }
+            });
+
+            // Beri jeda kecil agar Chart.js selesai menggambar ke Canvas
+            setTimeout(() => {
+                const opt = {
+                    margin:       [0, 0, 0, 0],
+                    filename:     `Report (${selectedAgentForModal.nama}).pdf`,
+                    image:        { type: 'jpeg', quality: 0.98 },
+                    html2canvas:  { scale: 2, useCORS: true, logging: false },
+                    jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                };
+
+                html2pdf().set(opt).from(printContainer).save().then(() => {
+                    // Hapus elemen sementara dari DOM setelah ekspor selesai
+                    if (pdfAhtChart) pdfAhtChart.destroy();
+                    document.body.removeChild(printContainer);
+                });
+            }, 300);
         }
 
+        // ==========================================
         // FUNGSI EXPORT PDF KONDISI 2: REPORT TIM
+        // ==========================================
         function exportTeamPdf() {
             const currentUser = JSON.parse(localStorage.getItem("active_user"));
             const adminTlSelect = document.getElementById("filterTlSelect");
@@ -923,7 +1252,6 @@
 
             let targetName = currentUser ? currentUser.nama : "Tim";
 
-            // Jika role admin, sesuaikan nama dengan filter TL/SPV yang dipilih
             if (currentUser && currentUser.role.includes("ADMIN")) {
                 if (adminTlSelect && adminTlSelect.value) {
                     targetName = adminTlSelect.value;
@@ -932,17 +1260,51 @@
                 }
             }
 
-            const element = document.getElementById("agentTableContainer");
+            const dateNow = new Date().toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' });
+            const startVal = document.getElementById("startDate").value;
+            const endVal = document.getElementById("endDate").value;
+
+            const tableHtml = document.getElementById("agentTableContainer").innerHTML;
+
+            const printWrapper = document.createElement("div");
+            printWrapper.style.padding = "20px";
+            printWrapper.style.fontFamily = "sans-serif";
+            printWrapper.style.backgroundColor = "#ffffff";
+
+            printWrapper.innerHTML = `
+                <div style="border-bottom: 2px solid #dc2626; padding-bottom: 10px; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div>
+                        <h1 style="font-size: 16px; font-weight: bold; color: #dc2626; margin: 0;">REKAPITULASI PERFORMANCE TIM CALL CENTER</h1>
+                        <p style="font-size: 11px; color: #64748b; margin: 2px 0 0 0;">Team Leader / Supervisor: <b>${targetName}</b></p>
+                    </div>
+                    <div style="text-align: right; font-size: 10px; color: #64748b;">
+                        <p style="margin: 0;">Tanggal Cetak: <b>${dateNow}</b></p>
+                        <p style="margin: 0;">Periode Rentang: <b>${startVal} s/d ${endVal}</b></p>
+                    </div>
+                </div>
+
+                <div>
+                    ${tableHtml}
+                </div>
+            `;
+
+            // Sembunyikan elemen pencarian, tombol & pagination di PDF hasil cetak
+            const btnExport = printWrapper.querySelector("button");
+            if (btnExport) btnExport.style.display = "none";
+            const searchBox = printWrapper.querySelector("#searchInput");
+            if (searchBox && searchBox.parentElement) searchBox.parentElement.style.display = "none";
+            const pagination = printWrapper.querySelector("#paginationFooter");
+            if (pagination) pagination.style.display = "none";
 
             const opt = {
-                margin:       [10, 10, 10, 10],
+                margin:       [8, 8, 8, 8],
                 filename:     `Report Tim (${targetName}).pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
                 html2canvas:  { scale: 2, useCORS: true },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
             };
 
-            html2pdf().set(opt).from(element).save();
+            html2pdf().set(opt).from(printWrapper).save();
         }
 
         async function openReportModal(agent) {
