@@ -900,7 +900,7 @@
         }
 
         // =========================================================================
-        // FUNGSI EXPORT PDF AGENT (SANGAT PRESISI & TERTATA PERFEKT A4)
+        // FUNGSI EXPORT PDF AGENT (BEBAS BLANK ATAS & TERTATA SANGAT PERFEKT A4)
         // =========================================================================
         async function exportAgentPdf() {
             if (!selectedAgentForModal) return;
@@ -921,7 +921,7 @@
 
             // 2. Ambil HTML & Canvas Grafik Halaman 2 (AHT)
             await switchModalTab("aht");
-            await new Promise(r => setTimeout(r, 200));
+            await new Promise(r => setTimeout(r, 250));
             
             const ahtCanvas = document.getElementById("ahtChartCanvas");
             let ahtImgData = "";
@@ -930,12 +930,13 @@
             }
             const ahtHtml = document.getElementById("modalReportContent").innerHTML;
 
-            // Kembalikan ke tab awal
+            // Kembalikan ke tab pilihan awal pengguna
             await switchModalTab(initialTab);
 
-            // 3. Susun Konten PDF dengan LEBAR 100% (Responsive Sesuai Kertas A4)
+            // 3. Susun Konten PDF dengan LEBAR PRESISI KERTAS A4 PORTRAIT (680px)
             const pdfContainer = document.createElement("div");
-            pdfContainer.style.width = "100%";
+            pdfContainer.style.width = "680px";
+            pdfContainer.style.margin = "0 auto";
             pdfContainer.style.boxSizing = "border-box";
             pdfContainer.style.padding = "0px";
             pdfContainer.style.backgroundColor = "#ffffff";
@@ -944,7 +945,7 @@
 
             pdfContainer.innerHTML = `
                 <!-- HALAMAN 1: RINGKASAN -->
-                <div style="page-break-after: always; box-sizing: border-box; width: 100%; padding-bottom: 5px;">
+                <div style="page-break-after: always; box-sizing: border-box; width: 680px; padding-bottom: 5px;">
                     <div style="border-bottom: 2px solid #dc2626; padding-bottom: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: flex-end;">
                         <div>
                             <h1 style="font-size: 15px; font-weight: bold; color: #dc2626; margin: 0;">KPI MONITORING PORTAL</h1>
@@ -977,7 +978,7 @@
                 </div>
 
                 <!-- HALAMAN 2: REPORT AHT -->
-                <div style="box-sizing: border-box; width: 100%; padding-top: 2px;">
+                <div style="box-sizing: border-box; width: 680px; padding-top: 2px;">
                     <div style="border-bottom: 2px solid #dc2626; padding-bottom: 6px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: flex-end;">
                         <div>
                             <h1 style="font-size: 15px; font-weight: bold; color: #dc2626; margin: 0;">KPI MONITORING PORTAL</h1>
@@ -999,19 +1000,37 @@
                 </div>
             `;
 
-            // Tempelkan gambar grafik statis untuk replacing canvas
+            // Tempelkan gambar grafik statis menggantikan canvas
             if (ahtImgData) {
                 const canvasInPdf = pdfContainer.querySelector("#ahtChartCanvas");
                 if (canvasInPdf && canvasInPdf.parentElement) {
-                    canvasInPdf.parentElement.innerHTML = `<img src="${ahtImgData}" style="width: 100%; height: 150px; object-fit: contain;" />`;
+                    canvasInPdf.parentElement.innerHTML = `<img src="${ahtImgData}" style="width: 100%; height: 140px; object-fit: contain;" />`;
                 }
             }
 
+            // Atur Grid AHT Halaman 2 khusus cetakan agar muat pas 6 kolom per baris
+            const gridElem = pdfContainer.querySelector("#pdfAhtBody .grid");
+            if (gridElem) {
+                gridElem.style.display = "grid";
+                gridElem.style.gridTemplateColumns = "repeat(6, 1fr)";
+                gridElem.style.gap = "4px";
+            }
+
+            // ATUR RESET SCROLL KE ATAS AGAR TIDAK ADA BLANK SPACE DI ATAS DOKUMEN
+            window.scrollTo(0, 0);
+
             const opt = {
-                margin:       [6, 6, 6, 6],
+                margin:       [8, 10, 8, 10],
                 filename:     `Report (${selectedAgentForModal.nama}).pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true, logging: false },
+                html2canvas:  { 
+                    scale: 2, 
+                    useCORS: true, 
+                    logging: false,
+                    scrollY: 0,
+                    scrollX: 0,
+                    windowWidth: document.documentElement.offsetWidth
+                },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
                 pagebreak:    { mode: ['css', 'legacy'] }
             };
@@ -1053,7 +1072,7 @@
             printWrapper.style.padding = "10px";
             printWrapper.style.fontFamily = "sans-serif";
             printWrapper.style.backgroundColor = "#ffffff";
-            printWrapper.style.width = "100%";
+            printWrapper.style.width = "960px";
             printWrapper.style.boxSizing = "border-box";
 
             printWrapper.innerHTML = `
@@ -1080,11 +1099,13 @@
             const pagination = printWrapper.querySelector("#paginationFooter");
             if (pagination) pagination.style.display = "none";
 
+            window.scrollTo(0, 0);
+
             const opt = {
-                margin:       [6, 6, 6, 6],
+                margin:       [6, 8, 6, 8],
                 filename:     `Report Tim (${targetName}).pdf`,
                 image:        { type: 'jpeg', quality: 0.98 },
-                html2canvas:  { scale: 2, useCORS: true },
+                html2canvas:  { scale: 2, useCORS: true, scrollY: 0, scrollX: 0 },
                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
             };
 
