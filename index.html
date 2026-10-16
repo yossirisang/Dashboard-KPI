@@ -45,6 +45,7 @@
         };
 
         let csvCache = {}; 
+        let allUserRows = []; // Menyimpan master data user
         let activeChartType = 'sales'; 
         let currentChartData = {
             sales: { mobile: [], fixed: [], labels: [] },
@@ -52,10 +53,10 @@
             ticket: { mobile: [], fixed: [], labels: [] }
         };
         let mainChart = null; 
-        let ahtChart = null; // Instance Chart untuk Grafik AHT Harian Agent
+        let ahtChart = null; 
         let selectedAgentForModal = null;
         let selectedReportMonth = "2026-10";
-        let activeModalTab = "summary"; // 'summary' atau 'aht'
+        let activeModalTab = "summary"; 
     </script>
 
     <!-- 1. HALAMAN LOGIN -->
@@ -105,7 +106,27 @@
                 </div>
             </div>
 
-            <div class="flex items-center gap-4 mt-3 sm:mt-0 flex-wrap">
+            <div class="flex items-center gap-3 mt-3 sm:mt-0 flex-wrap">
+                
+                <!-- DROPDOWN FILTER KHUSUS ADMIN (FILTER SPV & TL) -->
+                <div id="adminFilterContainer" class="hidden flex items-center gap-2">
+                    <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-xl text-xs">
+                        <i data-lucide="user-check" class="w-3.5 h-3.5 text-slate-400"></i>
+                        <span class="font-semibold text-slate-500">SPV:</span>
+                        <select id="filterSpvSelect" onchange="onAdminSpvChange()" class="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer text-xs">
+                            <option value="">Semua SPV</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1.5 rounded-xl text-xs">
+                        <i data-lucide="users" class="w-3.5 h-3.5 text-slate-400"></i>
+                        <span class="font-semibold text-slate-500">TL:</span>
+                        <select id="filterTlSelect" onchange="loadDashboardData()" class="bg-transparent font-bold text-slate-700 focus:outline-none cursor-pointer text-xs">
+                            <option value="">Semua TL</option>
+                        </select>
+                    </div>
+                </div>
+
                 <!-- Datepicker Rentang Tanggal -->
                 <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-xl text-xs text-slate-600">
                     <i data-lucide="calendar" class="w-4 h-4 text-slate-400"></i>
@@ -355,7 +376,6 @@
             return (row && row[colIdx] !== undefined) ? row[colIdx].toString().trim() : "";
         }
 
-        // FORMAT TERBILANG WAKTU (DESIMAL EXCEL / DETIK / TEKS -> STR hh:mm:ss ATAU mm:ss)
         function formatAhtValue(rawVal) {
             if (!rawVal || rawVal === "" || rawVal === "-") return "-";
             
@@ -387,7 +407,6 @@
             return rawVal;
         }
 
-        // KONVERSI NILAI AHT KE TOTAL DETIK (UNTUK PLOTTING GRAFIK CHART.JS)
         function parseAhtToSeconds(rawVal) {
             if (!rawVal || rawVal === "" || rawVal === "-") return 0;
 
@@ -395,11 +414,10 @@
             let num = parseFloat(cleanStr);
 
             if (!isNaN(num)) {
-                if (num < 1 && num > 0) return Math.round(num * 86400); // Desimal Excel -> Detik
-                if (num >= 1) return Math.round(num); // Angka Detik
+                if (num < 1 && num > 0) return Math.round(num * 86400); 
+                if (num >= 1) return Math.round(num); 
             }
 
-            // Jika berupa string format hh:mm:ss atau mm:ss
             let parts = rawVal.split(':').map(p => parseInt(p, 10) || 0);
             if (parts.length === 3) return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
             if (parts.length === 2) return (parts[0] * 60) + parts[1];
@@ -424,9 +442,9 @@
                 complete: function(results) {
                     btn.innerHTML = "<span>Masuk ke Dashboard</span>";
                     const rows = results.data;
-                    const userRows = rows.slice(1);
+                    allUserRows = rows.slice(1);
 
-                    const matchedUser = userRows.find(r => {
+                    const matchedUser = allUserRows.find(r => {
                         const sheetUser = getVal(r, 6).toLowerCase();
                         const sheetPass = getVal(r, 7).toLowerCase();
                         return sheetUser === userIn && sheetPass === passIn && sheetUser !== "";
@@ -440,7 +458,7 @@
                         if (userRole.includes("TL") || userRole.includes("LEADER") || userRole.includes("SPV") || userRole.includes("SUPERVISOR")) {
                             const targetLeaderName = userNama.toLowerCase();
 
-                            userRows.forEach(r => {
+                            allUserRows.forEach(r => {
                                 const agentTl = getVal(r, 4).toLowerCase();  
                                 const agentSpv = getVal(r, 5).toLowerCase(); 
 
@@ -489,8 +507,68 @@
             document.getElementById("dashboardPage").classList.remove("hidden");
             document.getElementById("userDisplayName").innerText = user.nama;
             document.getElementById("userRole").innerText = user.role;
+
+            // JIKA ROLE ADMIN: TAMPILKAN KONTROL FILTER SPV & TL
+            if (user.role.includes("ADMIN")) {
+                document.getElementById("adminFilterContainer").classList.remove("hidden");
+                // Unduh/Isi data opsi SPV & TL jika belum terisi
+                if (allUserRows.length === 0) {
+                    Papa.parse(CONFIG.USERS_SHEET_URL, {
+                        download: true, header: false, skipEmptyLines: true,
+                        complete: function(res) {
+                            allUserRows = res.data.slice(1);
+                            populateAdminFilters();
+                        }
+                    });
+                } else {
+                    populateAdminFilters();
+                }
+            } else {
+                document.getElementById("adminFilterContainer").classList.add("hidden");
+            }
             
             setTimeout(() => { lucide.createIcons(); }, 50);
+
+            loadDashboardData();
+        }
+
+        // POPULATE OPTION FILTER SPV & TL UNTUK ADMIN
+        function populateAdminFilters() {
+            const spvSelect = document.getElementById("filterSpvSelect");
+            const tlSelect = document.getElementById("filterTlSelect");
+
+            let spvSet = new Set();
+            let tlSet = new Set();
+
+            allUserRows.forEach(r => {
+                const spv = getVal(r, 5);
+                const tl = getVal(r, 4);
+                if (spv) spvSet.add(spv);
+                if (tl) tlSet.add(tl);
+            });
+
+            spvSelect.innerHTML = `<option value="">Semua SPV</option>` + 
+                Array.from(spvSet).sort().map(s => `<option value="${s}">${s}</option>`).join("");
+
+            tlSelect.innerHTML = `<option value="">Semua TL</option>` + 
+                Array.from(tlSet).sort().map(t => `<option value="${t}">${t}</option>`).join("");
+        }
+
+        function onAdminSpvChange() {
+            const selectedSpv = document.getElementById("filterSpvSelect").value.toLowerCase();
+            const tlSelect = document.getElementById("filterTlSelect");
+
+            let tlSet = new Set();
+            allUserRows.forEach(r => {
+                const spv = getVal(r, 5).toLowerCase();
+                const tl = getVal(r, 4);
+                if ((!selectedSpv || spv === selectedSpv) && tl) {
+                    tlSet.add(tl);
+                }
+            });
+
+            tlSelect.innerHTML = `<option value="">Semua TL</option>` + 
+                Array.from(tlSet).sort().map(t => `<option value="${t}">${t}</option>`).join("");
 
             loadDashboardData();
         }
@@ -575,6 +653,10 @@
 
             const role = currentUser.role.toUpperCase();
 
+            // AMBIL VALUE FILTER KHUSUS ADMIN
+            const adminSpvFilter = document.getElementById("filterSpvSelect") ? document.getElementById("filterSpvSelect").value.toLowerCase() : "";
+            const adminTlFilter = document.getElementById("filterTlSelect") ? document.getElementById("filterTlSelect").value.toLowerCase() : "";
+
             let dateLabels = [];
             let dateMap = [];
             let tempDate = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
@@ -615,10 +697,17 @@
                         const agentLogin = getVal(r, 2).toLowerCase(); 
                         const agentNama = getVal(r, 3).toLowerCase();  
                         const agentTl = getVal(r, 4).toLowerCase(); 
+                        const agentSpv = getVal(r, 5).toLowerCase();
 
                         let isMatch = false;
 
-                        if (role === "AGENT") {
+                        // JIKA ROLE ADMIN: FILTER BERDASARKAN DROPDOWN SPV & TL
+                        if (role.includes("ADMIN")) {
+                            const matchSpv = (!adminSpvFilter || agentSpv === adminSpvFilter);
+                            const matchTl = (!adminTlFilter || agentTl === adminTlFilter);
+                            isMatch = matchSpv && matchTl;
+                        }
+                        else if (role === "AGENT") {
                             isMatch = (agentSiad !== "" && agentSiad === currentUser.siad.toLowerCase()) ||
                                       (agentLogin !== "" && agentLogin === currentUser.login_id.toLowerCase()) ||
                                       (agentNama !== "" && agentNama === currentUser.nama.toLowerCase());
@@ -868,7 +957,6 @@
             const fcrFixTot = fcrMatch ? getVal(fcrMatch, 35) || "0%" : "0%"; 
             const fcrFixRec = fcrMatch ? getVal(fcrMatch, 36) || "0%" : "0%"; 
 
-            // Kolom AL (Index 37) di Sheet FCR
             const fcrAllVal = fcrMatch ? getVal(fcrMatch, 37) || "0%" : "0%";
 
             // 2. DATA SALES
@@ -1061,8 +1149,8 @@
             const targetNama = (selectedAgentForModal.nama || "").toLowerCase().trim();
 
             const matchRow = ahtRows.find(r => {
-                const s = getVal(r, 1).toLowerCase().trim(); // Kolom B (SIAD)
-                const n = getVal(r, 3).toLowerCase().trim(); // Kolom D (Nama)
+                const s = getVal(r, 1).toLowerCase().trim();
+                const n = getVal(r, 3).toLowerCase().trim();
                 return (targetSiad !== "" && s === targetSiad) || 
                        (targetNama !== "" && n === targetNama) ||
                        (targetNama !== "" && n.includes(targetNama));
@@ -1073,11 +1161,9 @@
                 return;
             }
 
-            // AHT TOTAL (Kolom AL / Idx 37)
             const rawTotalAht = getVal(matchRow, 37);
             const totalAhtFormatted = formatAhtValue(rawTotalAht);
 
-            // HITUNG JUMLAH HARI AKTUAL DALAM BULAN YANG DIPILIH
             const [year, month] = selectedReportMonth.split("-").map(Number);
             const daysInSelectedMonth = new Date(year, month, 0).getDate();
 
@@ -1087,7 +1173,7 @@
             let chartFormattedData = [];
 
             for (let d = 1; d <= daysInSelectedMonth; d++) {
-                const colIdx = 5 + d; // Tanggal 1 -> Idx 6 (Kolom G)
+                const colIdx = 5 + d;
                 const rawVal = getVal(matchRow, colIdx);
                 const formattedVal = formatAhtValue(rawVal);
                 const secondsVal = parseAhtToSeconds(rawVal);
@@ -1156,7 +1242,6 @@
             }, 50);
         }
 
-        // RENDER GRAFIK TREN AHT HARIAN DENGAN CHART.JS
         function renderAhtChart(labels, secondsData, formattedData) {
             const canvasElem = document.getElementById("ahtChartCanvas");
             if (!canvasElem) return;
