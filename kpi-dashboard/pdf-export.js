@@ -22,7 +22,7 @@ function selectTeamExportMonth(mKey) {
     }
 }
 
-// Proses Export PDF Tim dengan Ukuran Pasti A4 (794px x 1123px)
+// Proses Export PDF Tim dengan Ukuran Pasti A4 (794px x 1123px) & Jeda Render Aman
 async function processTeamPdfExport() {
     if (!filteredAgentList || filteredAgentList.length === 0) {
         alert("Tidak ada data agen untuk di-export.");
@@ -173,7 +173,7 @@ async function processTeamPdfExport() {
 
         const agentBlock = document.createElement("div");
         agentBlock.innerHTML = `
-            <!-- HALAMAN 1: RINGKASAN (UKURAN A4: 794px x 1123px, PADDING 32px) -->
+            <!-- HALAMAN 1: RINGKASAN -->
             <div style="page-break-after: always; break-after: page; box-sizing: border-box; width: 794px; height: 1123px; padding: 32px; display: flex; flex-direction: column; justify-content: space-between;">
                 <div>
                     <div style="border-bottom: 2px solid #dc2626; padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end;">
@@ -270,7 +270,7 @@ async function processTeamPdfExport() {
                 <div style="text-align: center; font-size: 9px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 10px;">Halaman 1 dari 2 (Ringkasan Kinerja Agen)</div>
             </div>
 
-            <!-- HALAMAN 2: AHT HARIAN (UKURAN A4: 794px x 1123px, PADDING 32px) -->
+            <!-- HALAMAN 2: AHT HARIAN -->
             <div style="page-break-after: ${i === totalAgents - 1 ? 'avoid' : 'always'}; break-after: ${i === totalAgents - 1 ? 'avoid' : 'page'}; box-sizing: border-box; width: 794px; height: 1123px; padding: 32px; display: flex; flex-direction: column; justify-content: space-between;">
                 <div>
                     <div style="border-bottom: 2px solid #dc2626; padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-end;">
@@ -314,27 +314,30 @@ async function processTeamPdfExport() {
     statusText.innerText = "Mengompilasi dan mengunduh PDF seluruh tim...";
     window.scrollTo(0, 0);
 
-    const opt = {
-        margin:       0,
-        filename:     customFileName,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, logging: false, scrollY: 0, scrollX: 0 },
-        jsPDF:        { unit: 'px', format: [794, 1123], orientation: 'portrait' },
-        pagebreak:    { mode: ['css', 'legacy'] }
-    };
+    setTimeout(() => {
+        const opt = {
+            margin:       0,
+            filename:     customFileName,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true, logging: false, scrollY: 0, scrollX: 0 },
+            jsPDF:        { unit: 'px', format: [794, 1123], orientation: 'portrait' },
+            pagebreak:    { mode: ['css', 'legacy'] }
+        };
 
-    html2pdf().set(opt).from(masterPdfContainer).save().then(() => {
-        btnExport.disabled = false;
-        btnExport.innerHTML = `<i data-lucide="download" class="w-4 h-4"></i><span>Download Report</span>`;
-        statusText.innerText = "Selesai mengunduh Laporan Tim PDF.";
-        closeTeamExportModal();
-        lucide.createIcons();
-    }).catch(() => {
-        btnExport.disabled = false;
-        btnExport.innerHTML = `<i data-lucide="download" class="w-4 h-4"></i><span>Download Report</span>`;
-        statusText.innerText = "Gagal memproses PDF tim.";
-        lucide.createIcons();
-    });
+        html2pdf().set(opt).from(masterPdfContainer).save().then(() => {
+            btnExport.disabled = false;
+            btnExport.innerHTML = `<i data-lucide="download" class="w-4 h-4"></i><span>Download Report</span>`;
+            statusText.innerText = "Selesai mengunduh Laporan Tim PDF.";
+            closeTeamExportModal();
+            lucide.createIcons();
+        }).catch((err) => {
+            console.error(err);
+            btnExport.disabled = false;
+            btnExport.innerHTML = `<i data-lucide="download" class="w-4 h-4"></i><span>Download Report</span>`;
+            statusText.innerText = "Gagal memproses PDF tim.";
+            lucide.createIcons();
+        });
+    }, 400);
 }
 
 // Export PDF Agent Individual
@@ -452,20 +455,23 @@ async function exportAgentPdf() {
 
     window.scrollTo(0, 0);
 
-    const opt = {
-        margin:       0,
-        filename:     `Report (${selectedAgentForModal.nama}).pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, logging: false, scrollY: 0, scrollX: 0 },
-        jsPDF:        { unit: 'px', format: [794, 1123], orientation: 'portrait' },
-        pagebreak:    { mode: ['css', 'legacy'] }
-    };
+    setTimeout(() => {
+        const opt = {
+            margin:       0,
+            filename:     `Report (${selectedAgentForModal.nama}).pdf`,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true, logging: false, scrollY: 0, scrollX: 0 },
+            jsPDF:        { unit: 'px', format: [794, 1123], orientation: 'portrait' },
+            pagebreak:    { mode: ['css', 'legacy'] }
+        };
 
-    html2pdf().set(opt).from(pdfContainer).save().then(() => {
-        btnDownload.innerText = "Download Report";
-        btnDownload.disabled = false;
-    }).catch(() => {
-        btnDownload.innerText = "Download Report";
-        btnDownload.disabled = false;
-    });
+        html2pdf().set(opt).from(pdfContainer).save().then(() => {
+            btnDownload.innerText = "Download Report";
+            btnDownload.disabled = false;
+        }).catch((err) => {
+            console.error(err);
+            btnDownload.innerText = "Download Report";
+            btnDownload.disabled = false;
+        });
+    }, 400);
 }
