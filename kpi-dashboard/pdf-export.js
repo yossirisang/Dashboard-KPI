@@ -22,7 +22,7 @@ function selectTeamExportMonth(mKey) {
     }
 }
 
-// 1. KODE EXPORT PDF TIM (LANDSCAPE: FORMAT PERSIS PERORANGAN DI KIRI + FOOTER BERSIH)
+// 1. KODE EXPORT PDF TIM (LANDSCAPE: RINGKASAN 100% PERSIS PERORANGAN + AHT HARIAN)
 async function processTeamPdfExport() {
     if (!filteredAgentList || filteredAgentList.length === 0) {
         alert("Tidak ada data agen untuk di-export.");
@@ -172,69 +172,69 @@ async function processTeamPdfExport() {
                     <div style="display: flex; gap: 15px;">
                         <!-- KOLOM KIRI: FORMAT PERSIS PERORANGAN -->
                         <div style="flex: 1;">
-                            <!-- 1. FCR -->
-                            <div style="font-size: 10px; font-weight: bold; color: #1e293b; border-bottom: 1px solid #cbd5e1; padding-bottom: 2px; margin-bottom: 4px;">Report First Contact Resolution (FCR)</div>
+                            <!-- Report First Contact Resolution (FCR) -->
+                            <div style="font-size: 10px; font-weight: bold; color: #1e293b; margin-bottom: 4px;">Report First Contact Resolution (FCR)</div>
                             <div style="display: flex; gap: 6px; margin-bottom: 5px; font-size: 9px;">
-                                <div style="flex: 1; background: #eff6ff; padding: 5px 7px; border-radius: 5px; border: 1px solid #dbeafe;">
-                                    <div style="font-weight: bold; color: #1d4ed8; margin-bottom: 2px; font-size: 8px;">Interaksi</div>
-                                    <div style="display: flex; justify-content: space-between; margin-bottom: 1px;"><span>Total Interaksi Mobile:</span><b>${intMobTot}</b></div>
-                                    <div style="display: flex; justify-content: space-between; margin-bottom: 1px;"><span>Total Interaksi Fixed:</span><b>${intFixTot}</b></div>
+                                <div style="flex: 1; background: #eff6ff; padding: 6px 8px; border-radius: 6px; border: 1px solid #dbeafe;">
+                                    <div style="font-weight: bold; color: #1d4ed8; margin-bottom: 2px; font-size: 9px;">Interaksi</div>
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 2px;"><span>Total Interaksi Mobile:</span><b>${intMobTot}</b></div>
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 2px;"><span>Total Interaksi Fixed:</span><b>${intFixTot}</b></div>
                                     <div style="display: flex; justify-content: space-between;"><span>Total Interaksi Reciprocal:</span><b>${intRecip}</b></div>
                                 </div>
-                                <div style="flex: 1; background: #fef2f2; padding: 5px 7px; border-radius: 5px; border: 1px solid #fee2e2;">
-                                    <div style="font-weight: bold; color: #b91c1c; margin-bottom: 2px; font-size: 8px;">Tiket KIP</div>
-                                    <div style="display: flex; justify-content: space-between; margin-bottom: 3px;"><span>Total Tiket KIP Mobile:</span><b>${tktMobTot}</b></div>
+                                <div style="flex: 1; background: #fef2f2; padding: 6px 8px; border-radius: 6px; border: 1px solid #fee2e2;">
+                                    <div style="font-weight: bold; color: #b91c1c; margin-bottom: 2px; font-size: 9px;">Tiket KIP</div>
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>Total Tiket KIP Mobile:</span><b>${tktMobTot}</b></div>
                                     <div style="display: flex; justify-content: space-between;"><span>Total Tiket KIP Fixed:</span><b>${tktFixTot}</b></div>
                                 </div>
                             </div>
 
                             <div style="display: flex; gap: 6px; margin-bottom: 5px; font-size: 9px;">
-                                <div style="flex: 1; background: #f8fafc; padding: 5px 7px; border-radius: 5px; border: 1px solid #e2e8f0;">
-                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #cbd5e1; padding-bottom: 2px;">
+                                <div style="flex: 1; background: #ffffff; padding: 6px 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 3px; margin-bottom: 4px;">
                                         <span><b>%FCR Mobile</b></span><b style="color: #2563eb;">${fcrMobTot}</b>
                                     </div>
-                                    <div style="display: flex; justify-content: space-around; margin-top: 3px; text-align: center; font-size: 8px;">
-                                        <div><span style="color: #64748b;">K:</span><b>${fcrMobK}</b></div>
-                                        <div><span style="color: #64748b;">I:</span><b>${fcrMobI}</b></div>
-                                        <div><span style="color: #64748b;">P:</span><b>${fcrMobP}</b></div>
+                                    <div style="display: flex; justify-content: space-around; text-align: center; font-size: 8px; border: 1px solid #e2e8f0; padding: 3px; border-radius: 4px;">
+                                        <div><span style="color: #64748b; display: block; font-size: 7px;">K</span><b>${fcrMobK}</b></div>
+                                        <div><span style="color: #64748b; display: block; font-size: 7px;">I</span><b>${fcrMobI}</b></div>
+                                        <div><span style="color: #64748b; display: block; font-size: 7px;">P</span><b>${fcrMobP}</b></div>
                                     </div>
                                 </div>
-                                <div style="flex: 1; background: #f8fafc; padding: 5px 7px; border-radius: 5px; border: 1px solid #e2e8f0;">
-                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #cbd5e1; padding-bottom: 2px;">
+                                <div style="flex: 1; background: #ffffff; padding: 6px 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 3px; margin-bottom: 4px;">
                                         <span><b>%FCR Fixed</b></span><b style="color: #dc2626;">${fcrFixTot}</b>
                                     </div>
-                                    <div style="display: flex; justify-content: space-around; margin-top: 3px; text-align: center; font-size: 8px;">
-                                        <div><span style="color: #64748b;">K:</span><b>${fcrFixK}</b></div>
-                                        <div><span style="color: #64748b;">I:</span><b>${fcrFixI}</b></div>
-                                        <div><span style="color: #64748b;">P:</span><b>${fcrFixP}</b></div>
-                                        <div><span style="color: #64748b;">Rec:</span><b>${fcrFixRec}</b></div>
+                                    <div style="display: flex; justify-content: space-around; text-align: center; font-size: 8px; border: 1px solid #e2e8f0; padding: 3px; border-radius: 4px;">
+                                        <div><span style="color: #64748b; display: block; font-size: 7px;">K</span><b>${fcrFixK}</b></div>
+                                        <div><span style="color: #64748b; display: block; font-size: 7px;">I</span><b>${fcrFixI}</b></div>
+                                        <div><span style="color: #64748b; display: block; font-size: 7px;">P</span><b>${fcrFixP}</b></div>
+                                        <div><span style="color: #64748b; display: block; font-size: 7px;">Recip</span><b>${fcrFixRec}</b></div>
                                     </div>
                                 </div>
                             </div>
 
-                            <div style="background: #ecfdf5; padding: 5px 8px; border-radius: 5px; border: 1px solid #a7f3d0; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 9px;">
-                                <b style="color: #065f46;">%FCR ALL</b><b style="color: #047857; font-size: 10px;">${fcrAllVal}</b>
+                            <div style="background: #ecfdf5; padding: 6px 10px; border-radius: 6px; border: 1px solid #a7f3d0; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 10px;">
+                                <b style="color: #065f46;">%FCR ALL</b><b style="color: #047857; font-size: 11px;">${fcrAllVal}</b>
                             </div>
 
-                            <!-- 2. SALES -->
-                            <div style="font-size: 10px; font-weight: bold; color: #1e293b; border-bottom: 1px solid #cbd5e1; padding-bottom: 2px; margin-bottom: 4px;">Report Sales</div>
-                            <div style="display: flex; gap: 6px; margin-bottom: 6px; font-size: 9px;">
-                                <div style="flex: 1; background: #f8fafc; padding: 5px 7px; border-radius: 5px; border: 1px solid #e2e8f0;">
-                                    <div style="display: flex; justify-content: space-between;"><span>Sales Mobile:</span><b>${salesMob}</b></div>
-                                    <div style="display: flex; justify-content: space-between; margin-top: 1px;"><span>% Sales Mobile:</span><b style="color: #2563eb;">${pctMob}</b></div>
+                            <!-- Report Sales -->
+                            <div style="font-size: 10px; font-weight: bold; color: #1e293b; margin-bottom: 4px;">Report Sales</div>
+                            <div style="display: flex; gap: 6px; margin-bottom: 8px; font-size: 9px;">
+                                <div style="flex: 1; background: #ffffff; padding: 6px 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="color: #1d4ed8; font-weight: bold;">Sales Mobile</span><b>${salesMob}</b></div>
+                                    <div style="display: flex; justify-content: space-between; border-top: 1px solid #f1f5f9; padding-top: 3px;"><span>% Sales Mobile:</span><b style="color: #2563eb;">${pctMob}</b></div>
                                 </div>
-                                <div style="flex: 1; background: #f8fafc; padding: 5px 7px; border-radius: 5px; border: 1px solid #e2e8f0;">
-                                    <div style="display: flex; justify-content: space-between;"><span>Sales Fixed:</span><b>${salesFix}</b></div>
-                                    <div style="display: flex; justify-content: space-between; margin-top: 1px;"><span>% Sales Fixed:</span><b style="color: #dc2626;">${pctFix}</b></div>
+                                <div style="flex: 1; background: #ffffff; padding: 6px 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span style="color: #b91c1c; font-weight: bold;">Sales Fixed</span><b>${salesFix}</b></div>
+                                    <div style="display: flex; justify-content: space-between; border-top: 1px solid #f1f5f9; padding-top: 3px;"><span>% Sales Fixed:</span><b style="color: #dc2626;">${pctFix}</b></div>
                                 </div>
                             </div>
 
-                            <!-- 3. RETENSI -->
-                            <div style="font-size: 10px; font-weight: bold; color: #1e293b; border-bottom: 1px solid #cbd5e1; padding-bottom: 2px; margin-bottom: 4px;">Report Retensi</div>
+                            <!-- Report Retensi -->
+                            <div style="font-size: 10px; font-weight: bold; color: #1e293b; margin-bottom: 4px;">Report Retensi</div>
                             <div style="display: flex; gap: 6px; text-align: center; font-size: 9px;">
-                                <div style="flex: 1; background: #faf5ff; padding: 5px; border-radius: 5px; border: 1px solid #f3e8ff;"><span style="font-size: 7px; color: #64748b;">Retensi</span><br><b style="color: #7e22ce; font-size: 10px;">${retensiVal}</b></div>
-                                <div style="flex: 1; background: #faf5ff; padding: 5px; border-radius: 5px; border: 1px solid #f3e8ff;"><span style="font-size: 7px; color: #64748b;">KIP Retensi</span><br><b style="color: #7e22ce; font-size: 10px;">${kipRetensiVal}</b></div>
-                                <div style="flex: 1; background: #faf5ff; padding: 5px; border-radius: 5px; border: 1px solid #f3e8ff;"><span style="font-size: 7px; color: #64748b;">% Retensi</span><br><b style="color: #7e22ce; font-size: 10px;">${pctRetensiVal}</b></div>
+                                <div style="flex: 1; background: #faf5ff; padding: 6px; border-radius: 6px; border: 1px solid #f3e8ff;"><span style="font-size: 7px; color: #64748b; display: block; margin-bottom: 2px;">RETENSI</span><b style="color: #7e22ce; font-size: 11px;">${retensiVal}</b></div>
+                                <div style="flex: 1; background: #faf5ff; padding: 6px; border-radius: 6px; border: 1px solid #f3e8ff;"><span style="font-size: 7px; color: #64748b; display: block; margin-bottom: 2px;">KIP RETENSI</span><b style="color: #7e22ce; font-size: 11px;">${kipRetensiVal}</b></div>
+                                <div style="flex: 1; background: #faf5ff; padding: 6px; border-radius: 6px; border: 1px solid #f3e8ff;"><span style="font-size: 7px; color: #64748b; display: block; margin-bottom: 2px;">% RETENSI</span><b style="color: #7e22ce; font-size: 11px;">${pctRetensiVal}</b></div>
                             </div>
                         </div>
 
