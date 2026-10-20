@@ -22,7 +22,7 @@ function selectTeamExportMonth(mKey) {
     }
 }
 
-// 1. KODE KHUSUS EXPORT PDF TIM (TABEL/LIST)
+// 1. KODE EXPORT PDF TIM (STABIL NORMAL FLOW, ANTI-BLANK)
 async function processTeamPdfExport() {
     if (!filteredAgentList || filteredAgentList.length === 0) {
         alert("Tidak ada data agen untuk di-export.");
@@ -61,7 +61,7 @@ async function processTeamPdfExport() {
     ]);
 
     const masterPdfContainer = document.createElement("div");
-    masterPdfContainer.style.width = "720px";
+    masterPdfContainer.style.width = "680px";
     masterPdfContainer.style.margin = "0 auto";
     masterPdfContainer.style.backgroundColor = "#ffffff";
     masterPdfContainer.style.color = "#1e293b";
@@ -140,16 +140,16 @@ async function processTeamPdfExport() {
             chartSecondsData.push(secondsVal);
 
             dailyGridHtml += `
-                <div style="background-color: #f8fafc; padding: 4px; border-radius: 4px; border: 1px solid #e2e8f0; text-align: center;">
-                    <span style="font-size: 8px; color: #94a3b8; font-weight: bold; display: block;">TGL ${d}</span>
-                    <span style="font-size: 10px; font-weight: 800; color: #0f172a;">${formattedVal}</span>
+                <div style="background-color: #f8fafc; padding: 3px; border-radius: 4px; border: 1px solid #e2e8f0; text-align: center;">
+                    <span style="font-size: 7px; color: #94a3b8; font-weight: bold; display: block;">TGL ${d}</span>
+                    <span style="font-size: 9px; font-weight: 800; color: #0f172a;">${formattedVal}</span>
                 </div>
             `;
         }
 
         const tempCanvas = document.createElement("canvas");
         tempCanvas.width = 680;
-        tempCanvas.height = 95;
+        tempCanvas.height = 90;
         
         const tempChart = new Chart(tempCanvas.getContext("2d"), {
             type: 'line',
@@ -165,7 +165,7 @@ async function processTeamPdfExport() {
                     pointRadius: 2
                 }]
             },
-            options: { responsive: false, animation: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { font: { size: 8 } } }, y: { beginAtZero: true, ticks: { font: { size: 8 } } } } }
+            options: { responsive: false, animation: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { font: { size: 7 } } }, y: { beginAtZero: true, ticks: { font: { size: 7 } } } } }
         });
 
         const chartImgData = tempCanvas.toDataURL("image/png");
@@ -174,137 +174,133 @@ async function processTeamPdfExport() {
         const agentBlock = document.createElement("div");
         agentBlock.innerHTML = `
             <!-- HALAMAN 1: RINGKASAN TIM -->
-            <div style="page-break-after: always; break-after: page; box-sizing: border-box; width: 720px; padding: 10px 0 60px 0; position: relative; min-height: 1050px;">
-                <div>
-                    <div style="border-bottom: 2px solid #dc2626; padding-bottom: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-end;">
-                        <div>
-                            <h1 style="font-size: 15px; font-weight: bold; color: #dc2626; margin: 0;">KPI MONITORING PORTAL</h1>
-                            <p style="font-size: 10px; color: #64748b; margin: 2px 0 0 0;">Agent Performance Evaluation Report</p>
-                        </div>
-                        <div style="text-align: right; font-size: 10px; color: #64748b;">
-                            <p style="margin: 0;">Tanggal Cetak: <b>${dateNow}</b></p>
-                            <p style="margin: 0;">Periode: <b style="color: #dc2626;">${monthText}</b></p>
-                        </div>
+            <div style="page-break-after: always; break-after: page; box-sizing: border-box; width: 680px; padding: 10px 0 20px 0;">
+                <div style="border-bottom: 2px solid #dc2626; padding-bottom: 4px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div>
+                        <h1 style="font-size: 13px; font-weight: bold; color: #dc2626; margin: 0;">KPI MONITORING PORTAL</h1>
+                        <p style="font-size: 8px; color: #64748b; margin: 1px 0 0 0;">Agent Performance Evaluation Report</p>
                     </div>
-
-                    <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; display: flex; justify-content: space-between; font-size: 11px;">
-                        <div>
-                            <p style="margin: 0 0 2px 0;">Nama Agent: <b style="color: #0f172a; font-size: 12px;">${ag.nama}</b></p>
-                            <p style="margin: 0;">SIAD: <b style="color: #0f172a;">${ag.siad || "-"}</b></p>
-                        </div>
-                        <div style="text-align: right;">
-                            <p style="margin: 0 0 2px 0;">Team Leader: <b>${currentUser ? currentUser.tl || currentUser.nama : "-"}</b></p>
-                            <p style="margin: 0;">Supervisor: <b>${currentUser ? currentUser.spv || "-" : "-"}</b></p>
-                        </div>
-                    </div>
-
-                    <div style="font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 10px; background: #f1f5f9; padding: 6px 12px; border-radius: 6px;">
-                        PAGE 1: RINGKASAN PERFORMANCE (FCR, SALES & RETENSI)
-                    </div>
-
-                    <div style="font-size: 11px;">
-                        <div style="border-bottom: 1px solid #e2e8f0; font-weight: bold; padding-bottom: 3px; margin-bottom: 6px; color: #0f172a;">Report First Contact Resolution (FCR)</div>
-                        <div style="display: flex; gap: 10px; margin-bottom: 8px;">
-                            <div style="flex: 1; background: #eff6ff; padding: 8px; border-radius: 6px; border: 1px solid #dbeafe;">
-                                <div style="font-weight: bold; color: #1d4ed8; margin-bottom: 3px;">Interaksi</div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 2px;"><span>Total Interaksi Mobile:</span><b>${intMobTot}</b></div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 2px;"><span>Total Interaksi Fixed:</span><b>${intFixTot}</b></div>
-                                <div style="display: flex; justify-content: space-between;"><span>Total Interaksi Reciprocal:</span><b>${intRecip}</b></div>
-                            </div>
-                            <div style="flex: 1; background: #fef2f2; padding: 8px; border-radius: 6px; border: 1px solid #fee2e2;">
-                                <div style="font-weight: bold; color: #b91c1c; margin-bottom: 3px;">Tiket KIP</div>
-                                <div style="display: flex; justify-content: space-between; margin-bottom: 4px;"><span>Total Tiket KIP Mobile:</span><b>${tktMobTot}</b></div>
-                                <div style="display: flex; justify-content: space-between;"><span>Total Tiket KIP Fixed:</span><b>${tktFixTot}</b></div>
-                            </div>
-                        </div>
-
-                        <div style="display: flex; gap: 10px; margin-bottom: 8px;">
-                            <div style="flex: 1; background: #f8fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #cbd5e1; padding-bottom: 2px;">
-                                    <span><b>%FCR Mobile</b></span><b style="color: #2563eb;">${fcrMobTot}</b>
-                                </div>
-                                <div style="display: flex; justify-content: space-around; margin-top: 5px; text-align: center;">
-                                    <div><span style="font-size: 8px; color: #64748b;">K</span><br><b>${fcrMobK}</b></div>
-                                    <div><span style="font-size: 8px; color: #64748b;">I</span><br><b>${fcrMobI}</b></div>
-                                    <div><span style="font-size: 8px; color: #64748b;">P</span><br><b>${fcrMobP}</b></div>
-                                </div>
-                            </div>
-                            <div style="flex: 1; background: #f8fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #cbd5e1; padding-bottom: 2px;">
-                                    <span><b>%FCR Fixed</b></span><b style="color: #dc2626;">${fcrFixTot}</b>
-                                </div>
-                                <div style="display: flex; justify-content: space-around; margin-top: 5px; text-align: center;">
-                                    <div><span style="font-size: 8px; color: #64748b;">K</span><br><b>${fcrFixK}</b></div>
-                                    <div><span style="font-size: 8px; color: #64748b;">I</span><br><b>${fcrFixI}</b></div>
-                                    <div><span style="font-size: 8px; color: #64748b;">P</span><br><b>${fcrFixP}</b></div>
-                                    <div><span style="font-size: 8px; color: #64748b;">Recip</span><br><b>${fcrFixRec}</b></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div style="background: #ecfdf5; padding: 8px 12px; border-radius: 6px; border: 1px solid #a7f3d0; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <b style="color: #065f46;">%FCR ALL</b><b style="color: #047857; font-size: 12px;">${fcrAllVal}</b>
-                        </div>
-
-                        <div style="border-bottom: 1px solid #e2e8f0; font-weight: bold; padding-bottom: 3px; margin-bottom: 6px; color: #0f172a;">Report Sales</div>
-                        <div style="display: flex; gap: 10px; margin-bottom: 8px;">
-                            <div style="flex: 1; background: #f8fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                <div style="display: flex; justify-content: space-between;"><span>Sales Mobile:</span><b>${salesMob}</b></div>
-                                <div style="display: flex; justify-content: space-between; margin-top: 2px;"><span>% Sales Mobile:</span><b style="color: #2563eb;">${pctMob}</b></div>
-                            </div>
-                            <div style="flex: 1; background: #f8fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                <div style="display: flex; justify-content: space-between;"><span>Sales Fixed:</span><b>${salesFix}</b></div>
-                                <div style="display: flex; justify-content: space-between; margin-top: 2px;"><span>% Sales Fixed:</span><b style="color: #dc2626;">${pctFix}</b></div>
-                            </div>
-                        </div>
-
-                        <div style="border-bottom: 1px solid #e2e8f0; font-weight: bold; padding-bottom: 3px; margin-bottom: 6px; color: #0f172a;">Report Retensi</div>
-                        <div style="display: flex; gap: 10px; text-align: center;">
-                            <div style="flex: 1; background: #faf5ff; padding: 8px; border-radius: 6px; border: 1px solid #f3e8ff;"><span style="font-size: 8px; color: #64748b;">Retensi</span><br><b style="color: #7e22ce;">${retensiVal}</b></div>
-                            <div style="flex: 1; background: #faf5ff; padding: 8px; border-radius: 6px; border: 1px solid #f3e8ff;"><span style="font-size: 8px; color: #64748b;">KIP Retensi</span><br><b style="color: #7e22ce;">${kipRetensiVal}</b></div>
-                            <div style="flex: 1; background: #faf5ff; padding: 8px; border-radius: 6px; border: 1px solid #f3e8ff;"><span style="font-size: 8px; color: #64748b;">% Retensi</span><br><b style="color: #7e22ce;">${pctRetensiVal}</b></div>
-                        </div>
+                    <div style="text-align: right; font-size: 8px; color: #64748b;">
+                        <p style="margin: 0;">Tanggal Cetak: <b>${dateNow}</b></p>
+                        <p style="margin: 0;">Periode: <b style="color: #dc2626;">${monthText}</b></p>
                     </div>
                 </div>
 
-                <div style="position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 9px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 6px;">Halaman 1 dari 2 (Ringkasan Kinerja Agen)</div>
+                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 10px; margin-bottom: 6px; display: flex; justify-content: space-between; font-size: 10px;">
+                    <div>
+                        <p style="margin: 0 0 1px 0;">Nama Agent: <b style="color: #0f172a; font-size: 11px;">${ag.nama}</b></p>
+                        <p style="margin: 0;">SIAD: <b style="color: #0f172a;">${ag.siad || "-"}</b></p>
+                    </div>
+                    <div style="text-align: right;">
+                        <p style="margin: 0 0 1px 0;">Team Leader: <b>${currentUser ? currentUser.tl || currentUser.nama : "-"}</b></p>
+                        <p style="margin: 0;">Supervisor: <b>${currentUser ? currentUser.spv || "-" : "-"}</b></p>
+                    </div>
+                </div>
+
+                <div style="font-size: 9px; font-weight: bold; color: #334155; margin-bottom: 6px; background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">
+                    PAGE 1: RINGKASAN PERFORMANCE (FCR, SALES & RETENSI)
+                </div>
+
+                <div style="font-size: 10px;">
+                    <div style="border-bottom: 1px solid #e2e8f0; font-weight: bold; padding-bottom: 2px; margin-bottom: 4px; color: #0f172a;">Report First Contact Resolution (FCR)</div>
+                    <div style="display: flex; gap: 6px; margin-bottom: 5px;">
+                        <div style="flex: 1; background: #eff6ff; padding: 6px; border-radius: 5px; border: 1px solid #dbeafe;">
+                            <div style="font-weight: bold; color: #1d4ed8; margin-bottom: 2px;">Interaksi</div>
+                            <div style="display: flex; justify-content: space-between;"><span>Total Interaksi Mobile:</span><b>${intMobTot}</b></div>
+                            <div style="display: flex; justify-content: space-between;"><span>Total Interaksi Fixed:</span><b>${intFixTot}</b></div>
+                            <div style="display: flex; justify-content: space-between;"><span>Total Interaksi Reciprocal:</span><b>${intRecip}</b></div>
+                        </div>
+                        <div style="flex: 1; background: #fef2f2; padding: 6px; border-radius: 5px; border: 1px solid #fee2e2;">
+                            <div style="font-weight: bold; color: #b91c1c; margin-bottom: 2px;">Tiket KIP</div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 2px;"><span>Total Tiket KIP Mobile:</span><b>${tktMobTot}</b></div>
+                            <div style="display: flex; justify-content: space-between;"><span>Total Tiket KIP Fixed:</span><b>${tktFixTot}</b></div>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 6px; margin-bottom: 5px;">
+                        <div style="flex: 1; background: #f8fafc; padding: 5px; border-radius: 5px; border: 1px solid #e2e8f0;">
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #cbd5e1; padding-bottom: 2px;">
+                                <span><b>%FCR Mobile</b></span><b style="color: #2563eb;">${fcrMobTot}</b>
+                            </div>
+                            <div style="display: flex; justify-content: space-around; margin-top: 3px; text-align: center;">
+                                <div><span style="font-size: 7px; color: #64748b;">K</span><br><b>${fcrMobK}</b></div>
+                                <div><span style="font-size: 7px; color: #64748b;">I</span><br><b>${fcrMobI}</b></div>
+                                <div><span style="font-size: 7px; color: #64748b;">P</span><br><b>${fcrMobP}</b></div>
+                            </div>
+                        </div>
+                        <div style="flex: 1; background: #f8fafc; padding: 5px; border-radius: 5px; border: 1px solid #e2e8f0;">
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #cbd5e1; padding-bottom: 2px;">
+                                <span><b>%FCR Fixed</b></span><b style="color: #dc2626;">${fcrFixTot}</b>
+                            </div>
+                            <div style="display: flex; justify-content: space-around; margin-top: 3px; text-align: center;">
+                                <div><span style="font-size: 7px; color: #64748b;">K</span><br><b>${fcrFixK}</b></div>
+                                <div><span style="font-size: 7px; color: #64748b;">I</span><br><b>${fcrFixI}</b></div>
+                                <div><span style="font-size: 7px; color: #64748b;">P</span><br><b>${fcrFixP}</b></div>
+                                <div><span style="font-size: 7px; color: #64748b;">Recip</span><br><b>${fcrFixRec}</b></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="background: #ecfdf5; padding: 5px 8px; border-radius: 5px; border: 1px solid #a7f3d0; display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                        <b style="color: #065f46;">%FCR ALL</b><b style="color: #047857; font-size: 11px;">${fcrAllVal}</b>
+                    </div>
+
+                    <div style="border-bottom: 1px solid #e2e8f0; font-weight: bold; padding-bottom: 2px; margin-bottom: 4px; color: #0f172a;">Report Sales</div>
+                    <div style="display: flex; gap: 6px; margin-bottom: 5px;">
+                        <div style="flex: 1; background: #f8fafc; padding: 5px; border-radius: 5px; border: 1px solid #e2e8f0;">
+                            <div style="display: flex; justify-content: space-between;"><span>Sales Mobile:</span><b>${salesMob}</b></div>
+                            <div style="display: flex; justify-content: space-between; margin-top: 2px;"><span>% Sales Mobile:</span><b style="color: #2563eb;">${pctMob}</b></div>
+                        </div>
+                        <div style="flex: 1; background: #f8fafc; padding: 5px; border-radius: 5px; border: 1px solid #e2e8f0;">
+                            <div style="display: flex; justify-content: space-between;"><span>Sales Fixed:</span><b>${salesFix}</b></div>
+                            <div style="display: flex; justify-content: space-between; margin-top: 2px;"><span>% Sales Fixed:</span><b style="color: #dc2626;">${pctFix}</b></div>
+                        </div>
+                    </div>
+
+                    <div style="border-bottom: 1px solid #e2e8f0; font-weight: bold; padding-bottom: 2px; margin-bottom: 4px; color: #0f172a;">Report Retensi</div>
+                    <div style="display: flex; gap: 6px; text-align: center;">
+                        <div style="flex: 1; background: #faf5ff; padding: 5px; border-radius: 5px; border: 1px solid #f3e8ff;"><span style="font-size: 8px; color: #64748b;">Retensi</span><br><b style="color: #7e22ce;">${retensiVal}</b></div>
+                        <div style="flex: 1; background: #faf5ff; padding: 5px; border-radius: 5px; border: 1px solid #f3e8ff;"><span style="font-size: 8px; color: #64748b;">KIP Retensi</span><br><b style="color: #7e22ce;">${kipRetensiVal}</b></div>
+                        <div style="flex: 1; background: #faf5ff; padding: 5px; border-radius: 5px; border: 1px solid #f3e8ff;"><span style="font-size: 8px; color: #64748b;">% Retensi</span><br><b style="color: #7e22ce;">${pctRetensiVal}</b></div>
+                    </div>
+                </div>
+
+                <div style="text-align: center; font-size: 8px; color: #94a3b8; border-top: 1px solid #f1f5f9; margin-top: 15px; padding-top: 4px;">Halaman 1 dari 2 (Ringkasan Kinerja Agen)</div>
             </div>
 
             <!-- HALAMAN 2: AHT HARIAN TIM -->
-            <div style="page-break-after: ${i === totalAgents - 1 ? 'avoid' : 'always'}; break-after: ${i === totalAgents - 1 ? 'avoid' : 'page'}; box-sizing: border-box; width: 720px; padding: 10px 0 60px 0; position: relative; min-height: 1050px;">
-                <div>
-                    <div style="border-bottom: 2px solid #dc2626; padding-bottom: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-end;">
-                        <div>
-                            <h1 style="font-size: 15px; font-weight: bold; color: #dc2626; margin: 0;">KPI MONITORING PORTAL</h1>
-                            <p style="font-size: 10px; color: #64748b; margin: 2px 0 0 0;">Average Handling Time (AHT) Detailed Report</p>
-                        </div>
-                        <div style="text-align: right; font-size: 10px; color: #64748b;">
-                            <p style="margin: 0;">Agent: <b>${ag.nama}</b></p>
-                            <p style="margin: 0;">Periode: <b style="color: #dc2626;">${monthText}</b></p>
-                        </div>
+            <div style="page-break-after: ${i === totalAgents - 1 ? 'avoid' : 'always'}; break-after: ${i === totalAgents - 1 ? 'avoid' : 'page'}; box-sizing: border-box; width: 680px; padding: 10px 0 20px 0;">
+                <div style="border-bottom: 2px solid #dc2626; padding-bottom: 4px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: flex-end;">
+                    <div>
+                        <h1 style="font-size: 13px; font-weight: bold; color: #dc2626; margin: 0;">KPI MONITORING PORTAL</h1>
+                        <p style="font-size: 8px; color: #64748b; margin: 1px 0 0 0;">Average Handling Time (AHT) Detailed Report</p>
                     </div>
-
-                    <div style="font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 10px; background: #f1f5f9; padding: 6px 12px; border-radius: 6px;">
-                        PAGE 2: AVERAGE HANDLING TIME (AHT) HARIAN
-                    </div>
-
-                    <div style="background: #fef2f2; padding: 8px 12px; border-radius: 6px; border: 1px solid #fecaca; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <div><b style="font-size: 11px; color: #0f172a;">Average Handling Time (AHT) Total</b><p style="font-size: 8px; color: #64748b; margin: 0;">Akumulasi performa AHT bulanan agen</p></div>
-                        <b style="font-size: 13px; color: #dc2626; background: #ffffff; padding: 3px 10px; border-radius: 6px; border: 1px solid #fee2e2;">${totalAhtFormatted}</b>
-                    </div>
-
-                    <div style="margin-bottom: 8px; border: 1px solid #e2e8f0; padding: 8px; border-radius: 6px;">
-                        <div style="font-size: 10px; font-weight: bold; color: #334155; margin-bottom: 4px;">Grafik Tren AHT Harian</div>
-                        <img src="${chartImgData}" style="width: 100%; height: 95px; object-fit: contain;" />
-                    </div>
-
-                    <div style="font-size: 10px; font-weight: bold; color: #334155; margin-bottom: 5px;">Rincian AHT Harian (${monthText})</div>
-                    <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px;">
-                        ${dailyGridHtml}
+                    <div style="text-align: right; font-size: 8px; color: #64748b;">
+                        <p style="margin: 0;">Agent: <b>${ag.nama}</b></p>
+                        <p style="margin: 0;">Periode: <b style="color: #dc2626;">${monthText}</b></p>
                     </div>
                 </div>
 
-                <div style="position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 9px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 6px;">Halaman 2 dari 2 (AHT Harian Agen)</div>
+                <div style="font-size: 9px; font-weight: bold; color: #334155; margin-bottom: 6px; background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">
+                    PAGE 2: AVERAGE HANDLING TIME (AHT) HARIAN
+                </div>
+
+                <div style="background: #fef2f2; padding: 6px 10px; border-radius: 5px; border: 1px solid #fecaca; display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <div><b style="font-size: 10px; color: #0f172a;">Average Handling Time (AHT) Total</b><p style="font-size: 7px; color: #64748b; margin: 0;">Akumulasi performa AHT bulanan agen</p></div>
+                    <b style="font-size: 12px; color: #dc2626; background: #ffffff; padding: 2px 6px; border-radius: 4px; border: 1px solid #fee2e2;">${totalAhtFormatted}</b>
+                </div>
+
+                <div style="margin-bottom: 6px; border: 1px solid #e2e8f0; padding: 5px; border-radius: 5px;">
+                    <div style="font-size: 9px; font-weight: bold; color: #334155; margin-bottom: 3px;">Grafik Tren AHT Harian</div>
+                    <img src="${chartImgData}" style="width: 100%; height: 85px; object-fit: contain;" />
+                </div>
+
+                <div style="font-size: 9px; font-weight: bold; color: #334155; margin-bottom: 4px;">Rincian AHT Harian (${monthText})</div>
+                <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px;">
+                    ${dailyGridHtml}
+                </div>
+
+                <div style="text-align: center; font-size: 8px; color: #94a3b8; border-top: 1px solid #f1f5f9; margin-top: 15px; padding-top: 4px;">Halaman 2 dari 2 (AHT Harian Agen)</div>
             </div>
         `;
 
@@ -316,7 +312,7 @@ async function processTeamPdfExport() {
 
     setTimeout(() => {
         const opt = {
-            margin:       10,
+            margin:       [4, 6, 4, 6],
             filename:     customFileName,
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { scale: 2, useCORS: true, logging: false, scrollY: 0, scrollX: 0 },
@@ -337,10 +333,10 @@ async function processTeamPdfExport() {
             statusText.innerText = "Gagal memproses PDF tim.";
             lucide.createIcons();
         });
-    }, 500);
+    }, 600);
 }
 
-// 2. KODE KHUSUS EXPORT PDF PERORANGAN (INDIVIDUAL) - KEMBALI KE FORMAT STABIL ANDA
+// 2. KODE EXPORT PDF PERORANGAN (TETAP AMAN DAN STABIL)
 async function exportAgentPdf() {
     if (!selectedAgentForModal) return;
 
