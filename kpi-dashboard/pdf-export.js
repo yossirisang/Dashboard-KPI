@@ -22,7 +22,7 @@ function selectTeamExportMonth(mKey) {
     }
 }
 
-// Proses Export PDF Tim dengan Normal Flow & Posisi Presisi
+// 1. KODE KHUSUS EXPORT PDF TIM (TABEL/LIST)
 async function processTeamPdfExport() {
     if (!filteredAgentList || filteredAgentList.length === 0) {
         alert("Tidak ada data agen untuk di-export.");
@@ -173,7 +173,7 @@ async function processTeamPdfExport() {
 
         const agentBlock = document.createElement("div");
         agentBlock.innerHTML = `
-            <!-- HALAMAN 1: RINGKASAN -->
+            <!-- HALAMAN 1: RINGKASAN TIM -->
             <div style="page-break-after: always; break-after: page; box-sizing: border-box; width: 720px; padding: 10px 0 60px 0; position: relative; min-height: 1050px;">
                 <div>
                     <div style="border-bottom: 2px solid #dc2626; padding-bottom: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-end;">
@@ -270,7 +270,7 @@ async function processTeamPdfExport() {
                 <div style="position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 9px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 6px;">Halaman 1 dari 2 (Ringkasan Kinerja Agen)</div>
             </div>
 
-            <!-- HALAMAN 2: AHT HARIAN -->
+            <!-- HALAMAN 2: AHT HARIAN TIM -->
             <div style="page-break-after: ${i === totalAgents - 1 ? 'avoid' : 'always'}; break-after: ${i === totalAgents - 1 ? 'avoid' : 'page'}; box-sizing: border-box; width: 720px; padding: 10px 0 60px 0; position: relative; min-height: 1050px;">
                 <div>
                     <div style="border-bottom: 2px solid #dc2626; padding-bottom: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-end;">
@@ -340,7 +340,7 @@ async function processTeamPdfExport() {
     }, 500);
 }
 
-// Export PDF Agent Individual
+// 2. KODE KHUSUS EXPORT PDF PERORANGAN (INDIVIDUAL) - KEMBALI KE FORMAT STABIL ANDA
 async function exportAgentPdf() {
     if (!selectedAgentForModal) return;
 
@@ -370,72 +370,68 @@ async function exportAgentPdf() {
     await switchModalTab(initialTab);
 
     const pdfContainer = document.createElement("div");
-    pdfContainer.style.width = "720px";
+    pdfContainer.style.width = "680px";
     pdfContainer.style.margin = "0 auto";
     pdfContainer.style.backgroundColor = "#ffffff";
     pdfContainer.style.color = "#1e293b";
     pdfContainer.style.fontFamily = "sans-serif";
 
     pdfContainer.innerHTML = `
-        <div style="page-break-after: always; break-after: page; box-sizing: border-box; width: 720px; padding: 10px 0 60px 0; position: relative; min-height: 1050px;">
-            <div>
-                <div style="border-bottom: 2px solid #dc2626; padding-bottom: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-end;">
-                    <div>
-                        <h1 style="font-size: 15px; font-weight: bold; color: #dc2626; margin: 0;">KPI MONITORING PORTAL</h1>
-                        <p style="font-size: 10px; color: #64748b; margin: 2px 0 0 0;">Agent Performance Evaluation Report</p>
-                    </div>
-                    <div style="text-align: right; font-size: 10px; color: #64748b;">
-                        <p style="margin: 0;">Tanggal Cetak: <b>${dateNow}</b></p>
-                        <p style="margin: 0;">Periode: <b style="color: #dc2626;">${monthText}</b></p>
-                    </div>
+        <div style="page-break-after: always; break-after: page; box-sizing: border-box; width: 680px; padding: 10px 0 20px 0;">
+            <div style="border-bottom: 2px solid #dc2626; padding-bottom: 4px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: flex-end;">
+                <div>
+                    <h1 style="font-size: 13px; font-weight: bold; color: #dc2626; margin: 0;">KPI MONITORING PORTAL</h1>
+                    <p style="font-size: 8px; color: #64748b; margin: 1px 0 0 0;">Agent Performance Evaluation Report</p>
                 </div>
-
-                <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; margin-bottom: 10px; display: flex; justify-content: space-between; font-size: 11px;">
-                    <div>
-                        <p style="margin: 0 0 2px 0;">Nama Agent: <b style="color: #0f172a; font-size: 12px;">${selectedAgentForModal.nama}</b></p>
-                        <p style="margin: 0;">SIAD: <b style="color: #0f172a;">${selectedAgentForModal.siad || "-"}</b></p>
-                    </div>
-                    <div style="text-align: right;">
-                        <p style="margin: 0 0 2px 0;">Team Leader: <b>${currentUser ? currentUser.tl || currentUser.nama : "-"}</b></p>
-                        <p style="margin: 0;">Supervisor: <b>${currentUser ? currentUser.spv || "-" : "-"}</b></p>
-                    </div>
-                </div>
-
-                <div style="font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 10px; background: #f1f5f9; padding: 6px 12px; border-radius: 6px;">
-                    PAGE 1: RINGKASAN PERFORMANCE (FCR, SALES & RETENSI)
-                </div>
-
-                <div id="pdfSummaryBody">
-                    ${summaryHtml}
+                <div style="text-align: right; font-size: 8px; color: #64748b;">
+                    <p style="margin: 0;">Tanggal Cetak: <b>${dateNow}</b></p>
+                    <p style="margin: 0;">Periode: <b style="color: #dc2626;">${monthText}</b></p>
                 </div>
             </div>
 
-            <div style="position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 9px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 6px;">Halaman 1 dari 2 (Ringkasan Kinerja Agen)</div>
+            <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 10px; margin-bottom: 6px; display: flex; justify-content: space-between; font-size: 10px;">
+                <div>
+                    <p style="margin: 0 0 1px 0;">Nama Agent: <b style="color: #0f172a; font-size: 11px;">${selectedAgentForModal.nama}</b></p>
+                    <p style="margin: 0;">SIAD: <b style="color: #0f172a;">${selectedAgentForModal.siad || "-"}</b></p>
+                </div>
+                <div style="text-align: right;">
+                    <p style="margin: 0 0 1px 0;">Team Leader: <b>${currentUser ? currentUser.tl || currentUser.nama : "-"}</b></p>
+                    <p style="margin: 0;">Supervisor: <b>${currentUser ? currentUser.spv || "-" : "-"}</b></p>
+                </div>
+            </div>
+
+            <div style="font-size: 9px; font-weight: bold; color: #334155; margin-bottom: 6px; background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">
+                PAGE 1: RINGKASAN PERFORMANCE (FCR, SALES & RETENSI)
+            </div>
+
+            <div id="pdfSummaryBody">
+                ${summaryHtml}
+            </div>
+
+            <div style="text-align: center; font-size: 8px; color: #94a3b8; border-top: 1px solid #f1f5f9; margin-top: 10px; padding-top: 4px;">Halaman 1 dari 2 (Ringkasan Kinerja Agen)</div>
         </div>
 
-        <div style="box-sizing: border-box; width: 720px; padding: 10px 0 60px 0; position: relative; min-height: 1050px;">
-            <div>
-                <div style="border-bottom: 2px solid #dc2626; padding-bottom: 6px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-end;">
-                    <div>
-                        <h1 style="font-size: 15px; font-weight: bold; color: #dc2626; margin: 0;">KPI MONITORING PORTAL</h1>
-                        <p style="font-size: 10px; color: #64748b; margin: 2px 0 0 0;">Average Handling Time (AHT) Detailed Report</p>
-                    </div>
-                    <div style="text-align: right; font-size: 10px; color: #64748b;">
-                        <p style="margin: 0;">Agent: <b>${selectedAgentForModal.nama}</b></p>
-                        <p style="margin: 0;">Periode: <b style="color: #dc2626;">${monthText}</b></p>
-                    </div>
+        <div style="box-sizing: border-box; width: 680px; padding: 10px 0 20px 0;">
+            <div style="border-bottom: 2px solid #dc2626; padding-bottom: 4px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: flex-end;">
+                <div>
+                    <h1 style="font-size: 13px; font-weight: bold; color: #dc2626; margin: 0;">KPI MONITORING PORTAL</h1>
+                    <p style="font-size: 8px; color: #64748b; margin: 1px 0 0 0;">Average Handling Time (AHT) Detailed Report</p>
                 </div>
-
-                <div style="font-size: 11px; font-weight: bold; color: #334155; margin-bottom: 10px; background: #f1f5f9; padding: 6px 12px; border-radius: 6px;">
-                    PAGE 2: AVERAGE HANDLING TIME (AHT) HARIAN
-                </div>
-
-                <div id="pdfAhtBody">
-                    ${ahtHtml}
+                <div style="text-align: right; font-size: 8px; color: #64748b;">
+                    <p style="margin: 0;">Agent: <b>${selectedAgentForModal.nama}</b></p>
+                    <p style="margin: 0;">Periode: <b style="color: #dc2626;">${monthText}</b></p>
                 </div>
             </div>
 
-            <div style="position: absolute; bottom: 10px; left: 0; right: 0; text-align: center; font-size: 9px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 6px;">Halaman 2 dari 2 (AHT Harian Agen)</div>
+            <div style="font-size: 9px; font-weight: bold; color: #334155; margin-bottom: 6px; background: #f1f5f9; padding: 4px 8px; border-radius: 4px;">
+                PAGE 2: AVERAGE HANDLING TIME (AHT) HARIAN
+            </div>
+
+            <div id="pdfAhtBody">
+                ${ahtHtml}
+            </div>
+
+            <div style="text-align: center; font-size: 8px; color: #94a3b8; border-top: 1px solid #f1f5f9; margin-top: 10px; padding-top: 4px;">Halaman 2 dari 2 (AHT Harian Agen)</div>
         </div>
     `;
 
@@ -455,23 +451,21 @@ async function exportAgentPdf() {
 
     window.scrollTo(0, 0);
 
-    setTimeout(() => {
-        const opt = {
-            margin:       10,
-            filename:     `Report (${selectedAgentForModal.nama}).pdf`,
-            image:        { type: 'jpeg', quality: 0.98 },
-            html2canvas:  { scale: 2, useCORS: true, logging: false, scrollY: 0, scrollX: 0 },
-            jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-            pagebreak:    { mode: ['css', 'legacy'] }
-        };
+    const opt = {
+        margin:       [4, 6, 4, 6],
+        filename:     `Report (${selectedAgentForModal.nama}).pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, logging: false, scrollY: 0, scrollX: 0 },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak:    { mode: ['css', 'legacy'] }
+    };
 
-        html2pdf().set(opt).from(pdfContainer).save().then(() => {
-            btnDownload.innerText = "Download Report";
-            btnDownload.disabled = false;
-        }).catch((err) => {
-            console.error(err);
-            btnDownload.innerText = "Download Report";
-            btnDownload.disabled = false;
-        });
-    }, 500);
+    html2pdf().set(opt).from(pdfContainer).save().then(() => {
+        btnDownload.innerText = "Download Report";
+        btnDownload.disabled = false;
+    }).catch((err) => {
+        console.error(err);
+        btnDownload.innerText = "Download Report";
+        btnDownload.disabled = false;
+    });
 }
